@@ -1,0 +1,26 @@
+# 개인 세이브 파일 / 게임 파생 바이너리 (커밋 제외)
+samples/
+*.sav
+*.exe
+
+# 역분석 캐시 (대용량, 재생성 가능)
+*.pkl
+*.bin
+
+# 개발 도구 설정 (Claude Code preview 등)
+.claude/
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# 파이썬
+__pycache__/
+*.pyc
+
+# 임시
+_check.js
+*.tmp

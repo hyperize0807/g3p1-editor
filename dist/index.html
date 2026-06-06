@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>창세기전3 파트1 세이브 에디터 (MVP)</title>
+<style>
+  :root{--bg:#1a1c22;--panel:#23262e;--panel2:#2b2f3a;--line:#3a3f4b;--fg:#e6e8ee;--mut:#9aa0ad;--acc:#6ea8fe;--ok:#5ed18b;--warn:#e6b65c}
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 "Segoe UI",Malgun Gothic,sans-serif;background:var(--bg);color:var(--fg)}
+  header{padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  header h1{font-size:15px;margin:0;font-weight:600}
+  .badge{font-size:11px;color:#0b0d12;background:var(--warn);border-radius:4px;padding:1px 6px;font-weight:700}
+  button{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:6px 12px;cursor:pointer}
+  button:hover{border-color:var(--acc)}
+  button.primary{background:var(--acc);color:#0b0d12;border-color:var(--acc);font-weight:600}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  #drop{margin:8px 16px;padding:30px;border:2px dashed var(--line);border-radius:10px;text-align:center;color:var(--mut)}
+  #drop.hl{border-color:var(--acc);color:var(--fg)}
+  #globalbar{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  #globalbar .gtitle{color:var(--acc);font-weight:600;font-size:13px}
+  #globalbar .gfld{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--mut)}
+  #globalbar .gfld input{width:120px}
+  #globalbar .gtitle{color:var(--ok)}
+  .gold-more{margin-left:auto}
+  .gold-more>summary{cursor:pointer;color:var(--warn);font-size:12px;list-style:none}
+  .gold-more>summary::-webkit-details-marker{display:none}
+  .gold-more>summary:before{content:'▸ '}
+  .gold-more[open]>summary:before{content:'▾ '}
+  .gold-more[open]{background:#241818;border:1px solid #6b3a3a;border-radius:6px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;width:100%;margin-top:8px}
+  .gold-more .gwarn{color:#e6b6b6;font-size:12px;flex-basis:100%}
+  main{display:none;grid-template-columns:320px 1fr;height:calc(100vh - 53px - 49px)}
+  #list{border-right:1px solid var(--line);overflow:auto;background:var(--panel)}
+  #search{width:100%;padding:8px 10px;border:0;border-bottom:1px solid var(--line);background:var(--panel2);color:var(--fg);position:sticky;top:0}
+  .row{padding:6px 12px;border-bottom:1px solid #2c303a;cursor:pointer;display:flex;justify-content:space-between;gap:8px}
+  .row:hover{background:var(--panel2)}
+  .row.sel{background:#33405e}
+  .row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .meta{color:var(--mut);font-size:11px;flex:none}
+  #edit{overflow:auto;padding:16px 22px}
+  .grp{margin-bottom:20px}
+  .grp h3{font-size:13px;color:var(--acc);border-bottom:1px solid var(--line);padding-bottom:5px;margin:0 0 10px;display:flex;gap:8px;align-items:center}
+  .tag{font-size:10px;padding:1px 5px;border-radius:3px}
+  .tag.ok{background:#1e3d2c;color:var(--ok)}
+  .tag.guess{background:#3d361e;color:var(--warn)}
+  .fld{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;margin-bottom:7px}
+  .fld label{color:var(--mut)}
+  .fld .off{color:#666;font-size:11px}
+  input[type=number],input[type=text],select{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:5px 7px;width:100%}
+  input[readonly]{color:var(--mut)}
+  .combo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .combo-grid .fld{grid-template-columns:34px 1fr;margin:0}
+  table.raw{border-collapse:collapse;font-family:Consolas,monospace;font-size:12px;width:100%}
+  table.raw td{border:1px solid #333;padding:2px 4px;text-align:center}
+  table.raw td.o{color:var(--mut);background:#202329}
+  table.raw input{padding:2px;text-align:center;border:0;background:transparent;color:var(--fg);width:46px}
+  details summary{cursor:pointer;color:var(--acc);margin:6px 0}
+  .hex{font-family:Consolas,monospace;font-size:11px;color:var(--mut);white-space:pre;overflow:auto;background:#181a1f;padding:8px;border-radius:6px}
+  .hint{color:var(--mut);font-size:12px}
+  .applyall{display:flex;gap:6px;align-items:center;color:var(--mut);font-size:12px}
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;align-items:flex-start;justify-content:center}
+  #modal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:40px;width:760px;max-width:94vw;max-height:86vh;overflow:auto;padding:18px 22px}
+  #modal h2{margin:0 0 4px;font-size:16px}
+  .zone-safe{border:1px solid #2f6b45;border-radius:8px;padding:6px 12px 12px;margin:10px 0;background:#16241c}
+  .zone-h{color:var(--ok);font-weight:600;font-size:13px;margin:8px 0}
+  .zone-danger{border:1px solid #6b3a3a;border-radius:8px;margin:14px 0;background:#241818}
+  .zone-danger>summary{cursor:pointer;color:var(--warn);font-weight:600;padding:10px 12px;list-style:none}
+  .zone-danger>summary::-webkit-details-marker{display:none}
+  .zone-danger>summary:before{content:'▸ ';}
+  .zone-danger[open]>summary:before{content:'▾ ';}
+  .zone-danger>*:not(summary){margin-left:12px;margin-right:12px}
+  .danger-warn{background:#2e1d1d;border:1px solid #6b3a3a;border-radius:6px;padding:10px;color:#e6b6b6;font-size:12px;line-height:1.7;margin:4px 12px 10px}
+  .invtbl{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:12px 0;background:var(--panel2)}
+  .invtbl.cur{border-color:var(--ok)}
+  .invtbl .ih{display:flex;justify-content:space-between;align-items:center;color:var(--acc);font-size:13px;margin-bottom:8px}
+  .invrow{display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:5px}
+  .invrow .del{background:#3a2326;border-color:#5a3338}
+  .smallbtn{font-size:12px;padding:3px 8px}
+</style>
+</head>
+<body>
+<header>
+  <h1>창세기전3 파트1 세이브 에디터</h1><span class="badge">MVP</span>
+  <input type="file" id="file" accept=".sav" style="display:none">
+  <button id="open">📂 .sav 열기</button>
+  <button id="invbtn" disabled>🎒 보관함 편집</button>
+  <button id="save" class="primary" disabled>💾 저장(다운로드)</button>
+  <span id="fname" class="hint"></span>
+  <span class="applyall" style="margin-left:auto"><input type="checkbox" id="applyall" checked> 모든 에피소드 블록에 적용(권장)</span>
+</header>
+<div id="drop">여기에 <b>.sav</b> 파일을 끌어다 놓거나 "열기"를 누르세요.<br><span class="hint">파일은 브라우저 안에서만 처리되며 어디에도 업로드되지 않습니다.</span></div>
+<div id="globalbar" style="display:none"></div>
+<div id="modal"><div class="box">
+  <h2>🎒 보관함 편집</h2>
+  <p class="hint">세이브에서 자동 탐지한 아이템 보관함 목록입니다. 아이템 구성을 보고 본인의 에피소드(시반슈미터/크림슨크루세이더/아포칼립스) 보관함을 찾으세요. 같은 내용의 사본은 함께 수정되어 게임에 반영됩니다. 수량/아이템을 바꾸고 닫은 뒤 "저장"을 누르세요. (게임 내부 고정 목록이 함께 보일 수 있으니 내용으로 구분하세요.)</p>
+  <div id="invlist"></div>
+  <div style="text-align:right;margin-top:12px"><button id="invclose" class="primary">닫기</button></div>
+</div></div>
+<main>
+  <div id="list"><input id="search" placeholder="이름/번호 검색…"><div id="rows"></div></div>
+  <div id="edit"><p class="hint">왼쪽에서 캐릭터를 선택하세요.</p></div>
+</main>
+
+<script>
+const TABLES = {"Char": {"4": "나이트 1", "5": "버몬트", "6": "솔져 1", "16": "스켈톤 1", "21": "도적", "25": "로열나이트 1", "26": "파이터 1", "30": "리치", "31": "스켈톤 2", "32": "슬라임 1", "68": "해적", "69": "불리져드", "70": "해파리", "87": "쿠르거", "89": "말벌", "98": "눈동자", "99": "박쥐", "100": "전갈", "175": "예니체리 1", "176": "파이크", "177": "아키비", "178": "중장병 1", "179": "무슬림 1", "186": "제네럴", "187": "가드", "189": "바시아조크", "196": "살라딘", "206": "크리스티앙", "207": "썬더볼트", "213": "록슬리", "214": "윌리엄", "215": "에이스 1", "232": "죠엘", "234": "아델라이데", "235": "시리우스", "236": "나이트 2", "237": "나이트 3", "238": "발키리 1", "239": "패러딘 1", "240": "드래군 1", "242": "워락", "244": "파일럿 1", "247": "좀비", "248": "고렘", "251": "시안", "278": "엘핀스톤", "280": "해럴드", "287": "라 MK3", "288": "베이모스 1", "345": "죠안", "352": "마르자나", "396": "아론다이트", "401": "리슐리외", "469": "자바카스", "470": "오스만", "488": "이븐 시나", "501": "라크라이", "510": "바이올라", "511": "알 아샤", "513": "얀", "514": "기즈", "515": "노포크", "522": "제논", "523": "베이모스T2", "528": "베이모스 2", "532": "슬라임 2", "533": "슬라임 3", "534": "슬라임 4", "537": "죤", "538": "어린 아지다하카 적색", "539": "어린 아지다하카 회색", "598": "라 커스텀 1", "599": "라 커스텀 2", "602": "티아마트", "603": "라이트닝", "604": "로열나이트 2", "605": "철가면", "620": "올리비에", "621": "플랑드르", "650": "셰라자드", "651": "롤랑", "652": "아지다하카", "653": "사피 알 딘", "664": "갸트링건", "670": "풀리져드", "673": "마리아", "674": "발라", "682": "무카파", "686": "알 파라비", "690": "아두스", "695": "시즈", "715": "어쌔신 1", "717": "사담", "723": "벨제부르", "725": "기즈 공작", "728": "CIO", "731": "닐라", "792": "로드리게스", "818": "아스카론", "823": "나이트 4", "834": "나이트 5", "835": "무슬림 2", "836": "나이트 6", "837": "에이스 2", "839": "나이트 7", "840": "솔져 2", "847": "예니체리 2", "848": "나이트 8", "849": "솔져 3", "850": "솔져 4", "853": "로열나이트 3", "854": "로열나이트 4", "855": "파이터 2", "856": "중장병 2", "859": "크루세이더", "860": "장군", "863": "로열가드 1", "864": "로열가드 2", "865": "에이스 3", "866": "파일럿 2", "867": "파일럿 3", "868": "나이트 9", "869": "나이트 10", "870": "나이트 11", "871": "나이트 12", "872": "발키리 2", "873": "패러딘 2", "874": "드래군 2", "875": "드래군 3", "881": "투르장교", "882": "예니체리 3", "883": "이그나", "893": "어쌔신 2", "894": "벨제부르(마장기)", "898": "디안", "900": "루이", "901": "보르스", "902": "케이트", "903": "카트린느", "906": "무파사", "907": "모건", "908": "라쉬카", "909": "로제", "911": "세시", "912": "산쵸", "913": "그리피스", "914": "램버트", "915": "로리엔", "916": "이슈탈", "917": "자스퍼", "918": "오웬", "919": "연적심", "920": "죽지랑", "921": "드래군 4", "922": "조의선인", "923": "사다함", "924": "무휼", "925": "부용", "926": "화랑", "927": "성혼", "928": "시즈 녹색", "929": "샤프리야르", "933": "안토니오", "934": "프랑소와즈", "935": "루크", "936": "라듀스", "937": "아크로", "938": "엘렌", "939": "토리오", "940": "스튜어트", "945": "왈리드", "947": "레이브", "948": "라몬", "949": "오토", "950": "네빌", "951": "앙드로", "952": "누르", "953": "스태포트", "954": "하워드", "955": "사이드", "956": "말콤", "957": "기파랑", "964": "필립", "965": "어린 살라딘", "967": "호세", "975": "묵호자"}, "Item": {"0": "없음", "1": "단검", "2": "어쎄신 대거", "3": "스틸레토", "4": "은장도", "5": "그라디우스", "6": "레이피어", "7": "샤벨", "8": "에스톡", "9": "카산드라", "10": "유리검", "11": "그람", "12": "실피드", "13": "수련검", "14": "숏소드", "15": "롱소드", "16": "실버소드", "17": "다크소드", "18": "크리샤오르", "19": "마인검", "20": "듀렌달", "21": "블릿츠", "22": "크리샤오르SE", "23": "플래쉬 소드", "24": "유성검", "25": "엑스칼리버", "26": "바리사다Ⅱ", "27": "브로드소드", "28": "바스타드 소드", "29": "그레이트 소드", "30": "클레이모어", "31": "아르마다", "32": "스타더스트", "33": "멸살지옥검", "34": "스탐블링거", "35": "다마스커스", "36": "재가드아그니", "37": "언월도", "38": "브리트라", "39": "카빌라카", "40": "아미타유스", "41": "히랄 하르로테", "42": "야마", "43": "슈크라", "44": "지하드", "45": "핸드건", "46": "리볼버", "47": "피스톨", "48": "킬루", "49": "나이트메어", "50": "라이플", "51": "롱 라이플", "52": "윈체스터", "53": "기관단총", "54": "돌격소총", "55": "기관총", "56": "스나이퍼건", "57": "아스트라", "58": "미트날", "59": "레일건", "60": "사르나스", "61": "테슈브", "62": "아르곤", "63": "대궁", "64": "벽력궁", "65": "천인공노", "66": "랜스", "67": "센츄리온", "68": "몰르니", "69": "롱기누스", "70": "화이어 써크렛", "71": "아이스 써크렛", "72": "썬더 써크렛", "73": "위자드 써크렛", "74": "사이킥 써크렛", "75": "포스 써크렛", "76": "라운드 쉴드", "77": "나이트쉴드", "78": "타워 쉴드", "79": "드래곤 쉴드", "80": "매직 쉴드", "81": "이지스 실드", "82": "레더 아머", "83": "킹 아머", "84": "스테일 아머", "85": "체인 아머", "86": "플레이트 아머", "87": "드래곤 아머", "88": "방탄복", "89": "방화복", "90": "방한복", "91": "절연복", "92": "기밀복", "93": "스켈톤 슈츠", "94": "파워드 슈츠", "95": "미라쥬 슈츠", "96": "파티마 슈츠", "97": "루비 반지", "98": "다이아몬드 반지", "99": "에메랄드 반지", "100": "진주 반지", "101": "흑진주 반지", "102": "스피드 슈즈", "103": "부스트 슈즈", "104": "엔젤 블래스", "105": "이글 아이", "106": "용아 ", "107": "카오스 큐브", "108": "전사의 서", "109": "현자의 서", "110": "사자의 서", "111": "요정의 팔찌", "112": "천사의 목걸이", "113": "스코프", "114": "레이져 스코프", "115": "M.C.디바이스", "116": "스타 라이트", "117": "화염 코팅", "118": "빙한 코팅", "119": "전격 코팅", "120": "포이즌 코팅", "121": "라이트닝 핊름", "122": "화이어 필름", "123": "아이스 필름", "124": "쇼크웨이브 필름", "125": "커즈 필름", "126": "회복약", "127": "고급회복약", "128": "완전 회복약", "129": "안정제", "130": "해독제", "131": "각성제", "132": "과일", "133": "동자삼", "134": "엔젤더스트", "135": "카오스 큐브의 파편", "136": "지도 조각", "137": "알수없는 씨앗", "138": "드래곤 하트", "139": "펄슈츠", "140": "천수 가사", "141": "어뮬렛 어페럴", "142": "블러드 프레임", "143": "슈발츠 로브", "144": "적무기_칼_30", "145": "적무기_칼_35", "146": "적무기_칼_40", "147": "적무기_칼_45", "148": "적무기_칼_50", "149": "적무기_칼_55", "150": "적무기_칼_60", "151": "적무기_칼_65", "152": "적무기_칼_70", "153": "적무기_칼_75", "154": "다하카이빨", "155": "적무기_라이플_30", "156": "적무기_라이플_35", "157": "적무기_라이플_40", "158": "적무기_라이플_45", "159": "적무기_라이플_50", "160": "적무기_라이플_55", "161": "적무기_빔소드_80", "162": "적무기_빔소드_90", "163": "적무기_빔소드_100", "164": "적무기_빔라이플_45", "165": "적무기_빔라이플_50", "166": "적무기_빔라이플_55", "167": "적무기_빔라이플_60", "168": "적무기 기관총", "169": "공중유니트용", "170": "아론다이트 검", "171": "자주포용", "172": "중독칼_55", "173": "혼란칼_55", "174": "컨디션이상칼_55", "175": "암살칼_55", "176": "최면칼_55", "177": "아론다이트_플러스_검", "178": "아론다이트_플러스_검", "179": "지옥도", "180": "썬더볼트용", "181": "마장기용_70"}, "Abil": {"0": "없음", "1": "HP", "2": "STR", "3": "SKILL", "4": "DEX", "5": "INT", "6": "RANGE", "7": "SPD", "8": "AC", "9": "MR", "10": "세검 장비", "11": "장검 장비", "12": "슈미터 장비", "13": "대검 장비", "14": "단검 장비", "15": "빔소드 장비", "16": "권총 장비", "17": "라이플 장비", "18": "빔라이플 장비", "19": "활 장비", "20": "창 장비", "21": "써크렛 장비", "22": "갑옷 장비", "23": "연", "24": "살", "25": "비", "26": "혼", "27": "파", "28": "초", "29": "참", "30": "격", "31": "광", "32": "화이어 블레이드", "33": "화이어 에로우", "34": "화이어 볼", "35": "화이어 필드", "36": "메테오", "37": "아이스 블레이드", "38": "아이스 미사일", "39": "아이스 실드", "40": "프로즌 아이스", "41": "문 라이트", "42": "썬더 블레이드", "43": "라이트닝 볼츠", "44": "쇼크 웨이브", "45": "에너지 필드", "46": "썬더 스톰", "47": "힐", "48": "블래스", "49": "큐어", "50": "힐윈드", "51": "썬라이트", "52": "스피디", "53": "버써크", "54": "디케이", "55": "배리어", "56": "커즈", "57": "쉐도우 실드", "58": "블러드 러스트", "59": "킹링 필드", "60": "네크로", "61": "아마게돈", "62": "도발", "63": "잠긴상자 열기", "64": "수리", "65": "댓쉬", "66": "집중", "67": "저격", "68": "매수", "69": "기도", "70": "희생", "71": "해체대법", "72": "최면", "73": "폭주", "74": "지뢰설치", "75": "워프", "76": "방어", "77": "회피", "78": "반격", "79": "역습", "80": "완전방어", "81": "조언", "82": "암살", "83": "탐색", "84": "열혈", "85": "강탈", "86": "사막적응", "87": "정글적응", "88": "동굴적응", "89": "산지적응", "90": "극지적응", "91": "바다적응", "92": "아수라 파천무", "95": "풍아열공참", "100": "비연참", "101": "새틀라이트 어택", "104": "플라즈마 슬래쉬", "105": "혈랑마흔", "111": "JAM소환(삭제 예정);", "112": "소드브레이크", "113": "미사일", "114": "다탄두 미사일", "115": "레이져", "116": "확산 레이져", "117": "버스터 포", "118": "9연사 기관총", "119": "소환능력", "120": "초필살기 제어", "121": "아론다이트 탑승", "122": "마장기 탑승", "123": "아지다하카 탑승", "124": "비룡 탑승", "125": "비행기 탑승", "126": "탱크 탑승", "127": "과학 지식", "128": "쌍검술", "129": "제국 검법", "130": "왕국 검법", "131": "앙그라 법전", "132": "암흑 마법", "133": "한제국 검법", "134": "전략", "135": "술탄의 검", "136": "칼리프의 성전", "137": "패자의 왕관", "138": "특수 직업", "139": "릴렌트러스", "140": "용병 제어1-3", "141": "용병 2연사1-3", "142": "용병 3연사1-3", "143": "용병 던지기1-3", "144": "용병 부메랑1-3", "145": "용병 기관총1-3", "146": "용병 바주카1-3", "147": "용병 쌍권총1-3", "148": "용병 빔라이플1-3", "149": "용병 파공격", "150": "권총 연사", "151": "쌍권총 연사", "152": "포격", "153": "공폭탄", "154": "3연사", "155": "6연사", "156": "9연사", "157": "버스터 캐논", "158": "레이져 캐논", "159": "자주포", "160": "폭격", "161": "버스터 런쳐", "162": "롱 레이져", "163": "컨디션 이상", "164": "혼란", "165": "중독", "166": "내리기", "167": "사이드 슬레이더", "168": "천노탄", "169": "다크 라이트", "170": "다하카 돌격", "175": "다하카 두번물기", "176": "다하카 꽉물기", "177": "다하카 애교", "178": "다하카 분노", "179": "큐리 오브 화이어", "180": "가베라의 저주", "181": "묵호파"}, "Job": {"0": "없음", "1": "슈미터", "2": "에스코드", "3": "사막레인져", "4": "정글레인져", "5": "해적", "6": "투사", "7": "어절트 슈미터", "8": "수크라", "9": "카빌라카", "10": "마하즈리다", "11": "티아마타", "12": "시반블레이드", "13": "시반라몬", "14": "시반에이커", "15": "시반가이스트", "16": "나이트", "17": "디펜더", "18": "스카우트", "19": "돌격기사", "20": "전투기사", "21": "마법기사", "22": "검투사", "23": "K.G", "24": "로열나이트", "25": "그랜드나이트", "26": "참모", "27": "성기사단", "28": "크루세이더", "29": "크림슨크루세이더", "30": "대공", "31": "병사", "32": "중장병", "33": "돌격병", "34": "스나이퍼", "35": "베테랑", "36": "파이크", "37": "가드", "38": "로열가드", "39": "제네럴", "40": "마법사", "41": "화이어마스터", "42": "아이스마스터", "43": "썬더마스터", "44": "마에스트로", "45": "위자드", "46": "과학자", "47": "연금술사", "48": "물리학자", "49": "의학자", "50": "지리학자", "51": "프로페서", "52": "파티마", "53": "나이트", "54": "디펜더", "55": "스카우트", "56": "제국기사", "57": "암흑기사", "58": "아크나이트", "59": "패러딘", "60": "임페리얼패러딘", "61": "파일럿", "62": "에이스", "63": "스파이", "64": "오피서", "65": "스페셜오피서", "66": "L.T.K", "67": "발키리", "68": "제국발키리", "69": "워락", "70": "세이지", "71": "현자", "72": "예니체리", "73": "칼리프", "74": "알가지", "75": "바시바조크", "76": "스파히", "77": "어쌔신", "78": "무슬림", "79": "카이슬림", "80": "사이슬림", "81": "자이슬림", "82": "바라몬", "83": "화랑", "84": "조의선인", "85": "레인져", "86": "아키비", "87": "킹", "88": "드래군", "89": "광신도", "90": "데스나이트", "91": "네크로멘서", "92": "교주", "93": "아지다하카", "94": "??????????"}, "Group": {"0": "무소속", "1": "시반슈미터", "2": "왕국기사단", "3": "십자군단", "4": "왕국병단", "5": "마법사단", "6": "과학마법사단", "7": "파티마", "8": "천사군", "9": "제국기사단", "10": "제국공군", "11": "제국병단", "12": "발키리", "13": "제국마법사단", "14": "흑태자교단", "15": "예니체리", "16": "투르병단", "17": "앙그라교단", "18": "한제국", "19": "커티스공화국", "20": "그라나다상단"}, "AtType": {"0": "없음", "1": "철가면", "2": "자스퍼", "3": "얀", "4": "조의선인", "5": "프랑소와즈", "6": "안토니오", "8": "벨제부르", "24": "고렘", "41": "아두스", "42": "발키리", "43": "호세", "44": "바시아조크", "47": "예니체리", "50": "솔져", "51": "CIO", "54": "말콤", "56": "기즈 공작", "57": "중장병", "59": "산쵸", "60": "나이트", "63": "이븐 시나", "68": "셰라자드", "69": "왈리드", "71": "오토", "74": "록슬리", "77": "이슈탈", "82": "파이크", "96": "살라딘", "99": "크리스티앙", "100": "에이스", "152": "아지다하카"}, "Face_Stat": {"222": "티아마트", "380": "록슬리", "381": "롤랑", "382": "루이", "383": "리슐리외", "384": "마르자나", "403": "그리피스", "404": "기즈", "405": "기파랑", "406": "노포크 1", "407": "닐라", "408": "디안", "409": "라쉬카", "411": "로리엔", "412": "로제", "413": "마리아", "414": "말콤", "415": "모건", "417": "무카파", "418": "무휼", "419": "바이올라", "421": "발라", "422": "버몬트", "423": "벨제부르", "424": "보르스", "425": "자바카스", "426": "아델라이데", "427": "시즈", "428": "램버트", "429": "아두스", "430": "무파사", "431": "알바티니", "432": "알 아샤", "433": "이스파히니", "435": "엘핀스톤", "436": "오스만", "437": "올리비에", "439": "이븐 시나", "440": "토리오", "441": "라몬", "442": "리야드", "444": "그린", "445": "프랑소와즈", "446": "죠안", "447": "죠엘", "449": "철가면", "450": "오토", "451": "안토니오", "452": "크리스티나", "453": "크리스티앙", "454": "왈리드", "455": "누르", "456": "아크로", "457": "이그나", "458": "스튜어트", "460": "더글라스", "461": "네빌", "462": "아스타로스", "463": "플랑드르", "464": "조의선인", "465": "사다함", "466": "해럴드", "467": "엘렌", "468": "케이트", "471": "자스퍼", "472": "카트린느", "474": "오웬", "475": "알제브르", "476": "사피 알 딘", "477": "산쵸", "478": "살라딘", "479": "샤프리야르", "480": "세시", "481": "시리우스", "482": "시안", "483": "셰라자드", "484": "얀", "485": "이슈탈", "486": "루크", "487": "윌리엄", "600": "라 MK3", "601": "알 파라비", "608": "아스카론", "609": "썬더볼트", "610": "아지다하카", "611": "라이트닝", "809": "레이브", "941": "쿠르거", "942": "스태포트", "961": "필립", "968": "어린 살라딘", "972": "죤", "983": "사담", "984": "칼리", "985": "라 커스텀 2", "986": "라 커스텀 1", "987": "제논", "991": "베이모스T2", "992": "라크라이", "995": "아지다하카 S", "996": "아지다하카 F", "997": "아지다하카 D", "998": "아지다하카 H"}, "Face_Msg": {"0": "없음", "120": "그리피스", "121": "기즈", "122": "아델라이데", "125": "아두스", "126": "알바티니", "127": "알 파라비", "128": "무파사", "129": "알 아샤", "130": "버몬트", "131": "세시", "132": "크리스티앙", "133": "디안", "134": "플랑드르", "135": "기파랑", "136": "윌리엄", "137": "해럴드", "138": "이븐 시나", "139": "사이드", "140": "사담", "141": "철가면", "142": "이스파히니", "143": "이슈탈", "144": "자바카스", "145": "죠안", "146": "죠엘", "147": "케이트", "148": "무카파", "150": "마리아", "151": "닐라", "152": "노포크", "153": "올리비에", "154": "오스만", "155": "엘핀스톤", "156": "리슐리외", "157": "록슬리", "158": "살라딘", "159": "사피 알 딘", "160": "셰라자드", "162": "시즈", "163": "발라", "164": "바이올라", "165": "시안", "166": "얀", "167": "마르자나", "168": "로리엔", "169": "롤랑", "170": "크리스티나", "252": "라쉬카", "253": "로드리게스", "254": "로제", "255": "루이", "256": "말콤", "257": "모건", "258": "모젤", "259": "알제브르", "260": "무휼", "262": "벨제부르", "263": "보르스", "264": "산쵸", "265": "샤프리야르", "266": "시리우스", "267": "램버트", "269": "오웬", "271": "자스퍼", "273": "카트린느", "274": "필립", "808": "레이브", "865": "에이스", "943": "스태포트", "944": "쿠르거", "973": "죤", "974": "어린 살라딘"}};
+const ABIL_MAX = {"1": 9, "2": 9, "3": 9, "4": 9, "5": 9, "6": 9, "7": 4, "8": 9, "9": 9, "10": 1, "11": 1, "12": 1, "13": 1, "14": 1, "15": 1, "16": 1, "17": 1, "18": 1, "19": 1, "20": 1, "21": 1, "22": 1, "23": 5, "24": 5, "25": 5, "26": 5, "27": 5, "28": 1, "29": 5, "30": 5, "31": 5, "32": 5, "33": 5, "34": 5, "35": 5, "36": 1, "37": 5, "38": 5, "39": 5, "40": 5, "41": 1, "42": 5, "43": 5, "44": 5, "45": 5, "46": 1, "47": 5, "48": 5, "49": 5, "50": 5, "51": 1, "52": 5, "53": 5, "54": 5, "55": 5, "56": 5, "57": 5, "58": 5, "59": 5, "60": 5, "61": 1, "62": 1, "63": 1, "64": 1, "65": 1, "66": 1, "67": 1, "68": 1, "69": 1, "70": 1, "71": 1, "72": 1, "73": 1, "74": 1, "75": 1, "76": 1, "77": 1, "78": 1, "79": 1, "80": 1, "81": 1, "82": 3, "83": 3, "84": 1, "85": 1, "86": 1, "87": 1, "88": 1, "89": 1, "90": 1, "91": 1, "92": 1, "95": 1, "100": 1, "101": 1, "104": 1, "105": 1, "111": 1, "112": 1, "113": 1, "114": 1, "115": 1, "116": 1, "117": 1, "118": 1, "119": 1, "120": 1, "121": 1, "122": 1, "123": 1, "124": 1, "125": 1, "126": 1, "127": 5, "128": 7, "129": 7, "130": 7, "131": 5, "132": 3, "133": 1, "134": 7, "135": 1, "136": 1, "137": 1, "138": 1, "139": 1, "140": 3, "141": 3, "142": 3, "143": 3, "144": 3, "145": 3, "146": 3, "147": 3, "148": 3, "149": 1, "150": 2, "151": 1, "152": 1, "153": 1, "154": 1, "155": 1, "156": 1, "157": 1, "158": 1, "159": 1, "160": 1, "161": 1, "162": 1, "163": 1, "164": 1, "165": 1, "166": 1, "167": 3, "168": 3, "169": 1, "170": 1, "175": 1, "176": 1, "177": 1};   // 어빌리티별 최대 레벨 (Abi.dat record+0x20). 없으면 기본 9.
+const abilMax = id => (ABIL_MAX[id] || 9);
+const MARK=[0x30,0x3A,0x10,0x10], REC=0x154;
+let buf=null, fileName="G3.sav", records=[], cur=-1, period=0;
+const dec949 = new TextDecoder('euc-kr');
+
+const u16=(o)=>buf[o]|(buf[o+1]<<8);
+const setu16=(o,v)=>{buf[o]=v&0xFF;buf[o+1]=(v>>8)&0xFF};
+const u32=(o)=>(buf[o]|(buf[o+1]<<8)|(buf[o+2]<<16)|(buf[o+3]<<24))>>>0;
+const setu32=(o,v)=>{buf[o]=v&0xFF;buf[o+1]=(v>>8)&0xFF;buf[o+2]=(v>>16)&0xFF;buf[o+3]=(v>>24)&0xFF};
+function cstr949(o,max){let e=o;while(e<o+max&&buf[e]!==0)e++;return dec949.decode(buf.slice(o,e));}
+
+const F={charId:0x44,faceMsg:0x46,faceStat:0x48,group:0x4A,job:0x4B,exp:0x58,hp:0x7C,combo:0x6A,
+  str:0x60,skill:0x61,dex:0x62,int:0x63,luck:0x64,spd:0x65,ac:0x66,mr:0x67,wtp:0x68,
+  weap1:0x82,weap2:0x84,armor:0x86,acc1:0x88,acc2:0x8A,abil:0x8C};
+// 어빌리티: 레코드 +0x8C부터 200바이트 배열, 인덱스=Abil.txt ID, 0xFF=미보유, 1+=레벨
+const ABIL_NONE=0xFF;  // 미보유 마커
+const STATS=[["Str","str"],["Skill","skill"],["Dex","dex"],["Int","int"],["Luck","luck"],["Spd","spd"],["Ac","ac"],["Mr","mr"],["Wtp","wtp"]];
+// 소지금: 표준 318레코드 세이브 기준 절대 오프셋의 u32 4개 (에피소드별)
+// 소지금: u32×4 @0x13B58. 에피소드→슬롯 매핑은 정답값으로 확정(ep0→0, ep1→1, ep2→3). slot2는 비표시 예비 슬롯.
+const GOLD=[{label:'시반슈미터',off:0x13B58,ep:0},{label:'크림슨크루세이더',off:0x13B5C,ep:1},
+  {label:'예비 슬롯(비표시·추정)',off:0x13B60,ep:null},{label:'아포칼립스',off:0x13B64,ep:2}];
+
+function parse(){
+  records=[];
+  for(let i=0;i+REC<=buf.length;){
+    if(buf[i]===MARK[0]&&buf[i+1]===MARK[1]&&buf[i+2]===MARK[2]&&buf[i+3]===MARK[3]){
+      records.push(i); i+=1;
+    } else i++;
+  }
+  computePeriod();
+}
+function recName(off){return cstr949(off+6,24)||("#"+u16(off+F.charId));}
+// 로스터 반복 주기(=블록 크기). 같은 (charId,이름) 시퀀스가 주기적으로 반복됨. 못 찾으면 전체.
+function computePeriod(){
+  const n=records.length; period=n;
+  if(!n)return;
+  const ks=records.map(r=>u16(r+F.charId)+':'+recName(r));
+  for(let P=1;P<=n>>1;P++){ if(n%P)continue; let ok=true;
+    for(let i=P;i<n;i++){ if(ks[i]!==ks[i-P]){ok=false;break;} }
+    if(ok){period=P;return;} }
+}
+// 현재 선택 캐릭터와 같은 슬롯(모든 블록)의 레코드 오프셋들
+function slotRecords(){
+  if(period>0 && period<records.length){
+    const t=[]; for(let idx=cur%period; idx<records.length; idx+=period) t.push(records[idx]); return t;
+  }
+  return [records[cur]];
+}
+
+function renderList(filter=""){
+  const rows=document.getElementById('rows'); rows.innerHTML="";
+  const blocks = (period>0 && period<records.length) ? Math.round(records.length/period) : 1;
+  const shown = (period>0 && period<records.length) ? period : records.length;  // 첫 블록만(중복 제거)
+  for(let idx=0;idx<shown;idx++){
+    const off=records[idx], nm=recName(off), cid=u16(off+F.charId);
+    const hay=(nm+" "+cid+" "+idx).toLowerCase();
+    if(filter && !hay.includes(filter)) continue;
+    const d=document.createElement('div');
+    d.className='row'+(idx===cur?' sel':'');
+    d.innerHTML='<span class="nm">'+nm+'</span><span class="meta">#'+cid+(blocks>1?' ·×'+blocks:'')+'</span>';
+    d.onclick=()=>{cur=idx;renderList(filter);renderEdit();};
+    rows.appendChild(d);
+  }
+}
+
+function opt(table,val){
+  const t=TABLES[table]||{};
+  let s='<option value="'+val+'">'+val+' — '+(t[val]!==undefined?t[val]:'(미정의)')+'</option>';
+  s+=Object.keys(t).map(Number).sort((a,b)=>a-b).map(k=>'<option value="'+k+'">'+k+' — '+t[k]+'</option>').join("");
+  return s;
+}
+function selField(label,off,table,size){
+  const v= size===1? buf[off] : u16(off);
+  return '<div class="fld"><label>'+label+' <span class="off">@0x'+off.toString(16)+'</span></label>'+
+   '<select data-off="'+off+'" data-size="'+(size||2)+'" data-kind="sel">'+opt(table,v)+'</select></div>';
+}
+function numField(label,off,size,kind){
+  const v= kind==='u32'? u32(off) : size===1? buf[off] : u16(off);
+  return '<div class="fld"><label>'+label+' <span class="off">@0x'+off.toString(16)+'</span></label>'+
+   '<input type="number" data-off="'+off+'" data-size="'+(size||2)+'" data-kind="'+(kind||'int')+'" value="'+v+'"></div>';
+}
+
+function renderEdit(){
+  if(cur<0)return;
+  const off=records[cur];
+  const e=document.getElementById('edit');
+  let statg="";
+  for(const [lab,key] of STATS){
+    statg+='<div class="fld"><label>'+lab+'</label>'+
+     '<input type="number" min="0" max="255" data-off="'+(off+F[key])+'" data-size="1" data-kind="int" value="'+buf[off+F[key]]+'"></div>';
+  }
+  let raw="<table class='raw'><tr><td class='o'>off</td>";
+  for(let c=0;c<8;c++) raw+="<td class='o'>+"+(c*2)+"</td>"; raw+="</tr>";
+  for(let base=0x44;base<REC;base+=16){
+    raw+="<tr><td class='o'>0x"+base.toString(16)+"</td>";
+    for(let c=0;c<8;c++){const o=base+c*2; raw+= (o+1<REC)? "<td><input type='number' data-off='"+(off+o)+"' data-size='2' data-kind='int' value='"+u16(off+o)+"'></td>":"<td></td>";}
+    raw+="</tr>";
+  }
+  raw+="</table>";
+  let hex="";
+  for(let r=0;r<REC;r+=16){
+    let line=("000"+r.toString(16)).slice(-3)+"  ";
+    for(let c=0;c<16&&r+c<REC;c++) line+=("0"+buf[off+r+c].toString(16)).slice(-2)+" ";
+    hex+=line+"\n";
+  }
+  // 어빌리티: 보유(=값!=0xFF) 목록 + 미보유 추가 드롭다운
+  const abase=off+F.abil, alen=REC-F.abil;
+  let owned="";
+  for(let id=1;id<alen;id++){ const v=buf[abase+id]; if(v!==ABIL_NONE){ const mx=abilMax(id);
+    owned+='<div class="invrow"><label style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+id+' — '+((TABLES.Abil&&TABLES.Abil[id])||'?')+' <span class="off">(최대 '+mx+')</span></label>'+
+      '<input type="number" min="0" max="'+mx+'" data-abil="'+id+'" value="'+v+'">'+
+      '<button class="del smallbtn" data-abildel="'+id+'">✕</button></div>';
+  }}
+  if(!owned) owned='<p class="hint">보유한 어빌리티가 없습니다.</p>';
+  let addopt='<option value="">+ 어빌리티 추가…</option>';
+  if(TABLES.Abil) Object.keys(TABLES.Abil).map(Number).filter(id=>id>=1&&id<alen&&buf[abase+id]===ABIL_NONE).sort((a,b)=>a-b)
+    .forEach(id=>{ addopt+='<option value="'+id+'">'+id+' — '+TABLES.Abil[id]+' (최대 '+abilMax(id)+')</option>'; });
+  e.innerHTML=
+  '<div class="grp"><h3>식별 정보 <span class="tag ok">확정</span></h3>'+
+    '<div class="fld"><label>이름(읽기전용)</label><input type="text" value="'+recName(off)+'" readonly></div>'+
+    selField("캐릭터 ID",off+F.charId,"Char",2)+
+    selField("소속",off+F.group,"Group",1)+
+    selField("직업",off+F.job,"Job",1)+
+    selField("초상화(Face_Stat)",off+F.faceStat,"Face_Stat",2)+
+    selField("얼굴대사(Face_Msg)",off+F.faceMsg,"Face_Msg",2)+
+  '</div>'+
+  '<div class="grp"><h3>능력치 <span class="tag ok">확정</span></h3>'+
+    numField("HP",off+F.hp,4,'u32')+
+    numField("EXP",off+F.exp,4,'u32')+
+    '<div class="combo-grid">'+statg+'</div>'+
+  '</div>'+
+  '<div class="grp"><h3>장비 <span class="tag ok">확정</span></h3>'+
+    selField("무기 1",off+F.weap1,"Item",2)+
+    selField("무기 2",off+F.weap2,"Item",2)+
+    selField("방어구",off+F.armor,"Item",2)+
+    selField("장신구 1",off+F.acc1,"Item",2)+
+    selField("장신구 2",off+F.acc2,"Item",2)+
+  '</div>'+
+  '<div class="grp"><h3>어빌리티 <span class="tag ok">확정</span></h3>'+
+    '<p class="hint">보유 어빌리티와 레벨. 레벨을 0으로 두면 미보유 처리됩니다. 최대 레벨은 Abi.dat에서 추출(어빌리티별 상이). 예: 연계기 23~31은 최대 5.</p>'+
+    '<div id="abilrows">'+owned+'</div>'+
+    '<select id="abiladd" style="margin-top:6px;max-width:320px">'+addopt+'</select>'+
+  '</div>'+
+  '<div class="grp"><h3>고급: 전체 데이터 <span class="tag guess">raw</span></h3>'+
+    '<details><summary>16비트 값 그리드 (직접 편집)</summary>'+raw+'</details>'+
+    '<details><summary>HEX 덤프 (읽기전용, 340바이트)</summary><div class="hex">'+hex+'</div></details>'+
+  '</div>';
+  e.querySelectorAll('[data-off]').forEach(el=>el.addEventListener('change',()=>applyField(el)));
+  e.querySelectorAll('[data-abil]').forEach(el=>el.addEventListener('change',()=>{
+    const id=+el.dataset.abil, mx=abilMax(id);
+    let v=parseInt(el.value,10); if(isNaN(v)||v<0)v=0; if(v>mx){v=mx; el.value=mx;}
+    applyAbil(id, v===0?ABIL_NONE:v); if(v===0) renderEdit();
+  }));
+  e.querySelectorAll('[data-abildel]').forEach(el=>el.addEventListener('click',()=>{
+    applyAbil(+el.dataset.abildel, ABIL_NONE); renderEdit();
+  }));
+  const addsel=document.getElementById('abiladd');
+  if(addsel) addsel.addEventListener('change',()=>{ const id=parseInt(addsel.value,10); if(!isNaN(id)){ applyAbil(id,1); renderEdit(); } });
+}
+function editTargets(){   // 적용 대상 레코드 오프셋: 체크 시 모든 블록의 같은 슬롯, 아니면 현재만
+  return document.getElementById('applyall').checked ? slotRecords() : [records[cur]];
+}
+function applyAbil(id,val){
+  for(const t of editTargets()){ buf[t+F.abil+id]=val&0xFF; }
+}
+function applyField(el){
+  const o=+el.dataset.off, size=+el.dataset.size, kind=el.dataset.kind;
+  let v=parseInt(el.value,10); if(isNaN(v))return;
+  const rel=o-records[cur];
+  for(const t of editTargets()){
+    const a=t+rel;
+    if(kind==='u32') setu32(a,v>>>0);
+    else if(size===1) buf[a]=v&0xFF;
+    else setu16(a,v&0xFFFF);
+  }
+  renderList(document.getElementById('search').value.toLowerCase());
+}
+
+function renderGlobal(){
+  const gb=document.getElementById('globalbar');
+  const ok = buf.length > 0x13B68;   // 표준 세이브에서만 소지금 표시
+  if(!ok){ gb.style.display='none'; return; }
+  const ep = buf.length>4 ? u32(0) : -1;
+  const validEp = ep>=0 && ep<3;
+  const cur = validEp ? GOLD.find(g=>g.ep===ep) : null;
+  const fld=(off)=>'<input type="number" min="0" max="4294967295" data-gold="'+off+'" value="'+u32(off)+'">';
+  let html='';
+  if(cur){
+    html+='<span class="gtitle">💰 현재 소지금 — '+EPISODES[ep]+'</span><span class="gfld">'+fld(cur.off)+'</span>';
+  } else {
+    html+='<span class="gtitle">💰 소지금</span><span class="hint">진행 중 에피소드 없음(연대표) — 표시 소지금이 없습니다. 아래에서 선택 편집.</span>';
+  }
+  const others=GOLD.filter(g=>g!==cur);
+  html+='<details class="gold-more"><summary>기타 소지금 ('+others.length+') ⚠️</summary>'+
+    '<span class="gwarn">다른 에피소드/예비 슬롯입니다. 진행 중이 아닌 값 편집은 게임에 바로 보이지 않을 수 있습니다.</span>';
+  for(const g of others){ const nm=g.ep!=null?EPISODES[g.ep]:g.label;
+    html+='<span class="gfld"><label>'+nm+'</label>'+fld(g.off)+'</span>'; }
+  html+='</details>';
+  gb.innerHTML=html; gb.style.display='flex';
+  gb.querySelectorAll('[data-gold]').forEach(el=>el.addEventListener('change',()=>{
+    let v=parseInt(el.value,10); if(isNaN(v)||v<0)v=0; if(v>0xFFFFFFFF)v=0xFFFFFFFF;
+    setu32(+el.dataset.gold, v>>>0);
+  }));
+}
+// ===== 보관함(아이템 저장소) =====
+// 구조: [개수:u32][ (아이템ID:u32, 수량:u32) x N ]. 오프셋은 진행도에 따라 이동하므로 스캔으로 탐지.
+let invGroups=[], curEpisode=-1;
+const EPISODES=['시반슈미터','크림슨크루세이더','아포칼립스'];  // 0x00 = 현재 에피소드 인덱스
+// 게임 내장 고정 아이템 목록(모든 세이브에서 동일) — 보관함이 아님. 멀티셋 시그니처로 식별/제외.
+const STATIC_SIG='61|2,1;3,1;6,2;7,1;8,1;9,1;10,3;11,2;13,2;14,1;16,3;17,1;19,4;20,1;27,1;28,1;29,1;30,1;32,1;34,1;39,2;43,1;46,4;47,9;51,1;52,1;53,1;54,4;55,1;56,3;62,1;72,2;73,2;77,1;78,3;80,2;81,1;83,1;86,1;88,3;89,4;91,1;92,7;94,2;101,6;103,4;104,4;105,6;112,2;113,3;114,3;122,1;123,1;126,11;127,20;128,5;129,1;130,7;131,8;135,6;142,1';
+function scanInv(){
+  const found=[];
+  let o=4;
+  while(o+12<=buf.length){
+    const n=u32(o);
+    if(n>=2 && n<=120 && u32(o-4)===0 && o+4+n*8<=buf.length){
+      let ok=true;
+      for(let k=0;k<n;k++){const id=u32(o+4+k*8),q=u32(o+4+k*8+4); if(!(id>=1&&id<=181&&q>=1&&q<=999)){ok=false;break;}}
+      if(ok){
+        const end=o+4+n*8;
+        // 빈 공간 = 배열 뒤 "다음 실제 구조" 전까지의 슬롯 수. 게임은 이 영역(0 또는 잔여 아이템 데이터)에
+        // 그대로 덮어쓰며 보관함을 확장함(테스트로 확인). 다음 구조는 보관함 쌍으로 볼 수 없는 값(id>181 또는 qty>999)에서 시작.
+        let slack=0,p=end;
+        while(p+8<=buf.length){ const fid=u32(p),fq=u32(p+4); if(fid<=181&&fq<=999){slack++;p+=8;if(slack>=250)break;} else break; }
+        found.push({off:o,n,slack});
+        o=end; continue;                       // 테이블 내부 재탐지 방지
+      }
+    }
+    o+=2;                                       // 2바이트 정렬(테이블이 2바이트 경계에 올 수 있음)
+  }
+  // 순서 무관(멀티셋) 내용으로 사본 묶기 → 라이브/스냅샷 사본을 함께 수정
+  const sigOf=t=>{const a=Array.from({length:t.n},(_,k)=>[u32(t.off+4+k*8),u32(t.off+4+k*8+4)]);
+    a.sort((x,y)=>x[0]-y[0]||x[1]-y[1]); return t.n+'|'+a.map(p=>p[0]+','+p[1]).join(';');};
+  const map={};
+  for(const t of found){ const s=sigOf(t); (map[s]=map[s]||{members:[],slacks:[],n:t.n}); map[s].members.push(t.off); map[s].slacks.push(t.slack); }
+  // 현재 에피소드 & "작업영역(소지금 뒤 ~ 블록1 앞)" 보관함 = 현재 진행 중 에피소드의 라이브 보관함
+  curEpisode = buf.length>4 ? u32(0) : -1;
+  const validEp = curEpisode>=0 && curEpisode<3;     // 0xFFFFFFFF(=-1) = 연대표(진행 에피소드 없음)
+  const GOLD_OFF=0x13B58;
+  const blk1 = records.length>106 ? records[106] : buf.length;
+  invGroups=Object.values(map).map(g=>{
+    const o=g.members[0];
+    g.items=Array.from({length:g.n},(_,k)=>({id:u32(o+4+k*8),qty:u32(o+4+k*8+4)}));
+    g.origN=g.n; g.cap=g.n+Math.min(...g.slacks);
+    g.totalQty=g.items.reduce((s,it)=>s+it.qty,0);
+    g.minOff=Math.min(...g.members);
+    g.sig=g.n+'|'+g.items.map(it=>[it.id,it.qty]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]).map(p=>p[0]+','+p[1]).join(';');
+    g.isStatic=(g.sig===STATIC_SIG);
+    g.episode=-1;
+    g.isCurrent = validEp && !g.isStatic && g.minOff>GOLD_OFF && g.minOff<blk1;  // 소지금 뒤 작업영역 = 현재 에피소드 라이브 보관함
+    return g;
+  });
+  // 나머지 에피소드: 소지금 앞(아카이브) 보관함을 오프셋 순서대로 비현재 에피소드 인덱스에 매핑
+  if(invGroups.find(g=>g.isCurrent)) invGroups.find(g=>g.isCurrent).episode=curEpisode;
+  const others=invGroups.filter(g=>!g.isStatic && !g.isCurrent && g.minOff<GOLD_OFF).sort((a,b)=>a.minOff-b.minOff);
+  const nonCur=[0,1,2].filter(e=>e!==curEpisode);
+  others.forEach((g,i)=>{ if(i<nonCur.length) g.episode=nonCur[i]; });
+  invGroups.forEach(g=>{
+    if(g.isStatic) g.label='게임 기본 아이템 목록 (보관함 아님 · 편집 비권장)';
+    else if(g.isCurrent) g.label='🟢 현재 보관함 — '+(EPISODES[curEpisode]||('에피소드 '+curEpisode));
+    else if(g.episode>=0 && g.episode<3) g.label=EPISODES[g.episode]+' 보관함 (추정)';
+    else g.label='기타 보관함 (다른 시점/아카이브)';
+  });
+  // 정렬: 현재 → 에피소드 추정 → 기타 → 정적목록
+  const rank=g=> g.isCurrent?0 : (g.episode>=0?1+g.episode : (g.isStatic?9:5));
+  invGroups.sort((a,b)=> rank(a)-rank(b) || a.minOff-b.minOff);
+}
+function writeGroup(g){
+  for(const off of g.members){
+    for(let k=0;k<Math.max(g.origN,g.items.length);k++){ setu32(off+4+k*8,0); setu32(off+4+k*8+4,0); }
+    g.items.forEach((it,k)=>{ setu32(off+4+k*8,it.id>>>0); setu32(off+4+k*8+4,it.qty>>>0); });
+    setu32(off,g.items.length>>>0);
+  }
+}
+function invBoxHtml(g,gi){
+  const loc=g.members.map(o=>'0x'+o.toString(16)).join(', ');
+  const rows=g.items.map((it,ri)=>
+    '<div class="invrow">'+
+     '<select data-g="'+gi+'" data-r="'+ri+'" data-k="id">'+opt("Item",it.id)+'</select>'+
+     '<input type="number" min="0" max="999" data-g="'+gi+'" data-r="'+ri+'" data-k="qty" value="'+it.qty+'">'+
+     '<button class="del smallbtn" data-g="'+gi+'" data-del="'+ri+'">✕</button>'+
+    '</div>').join("");
+  const title=g.label+' — '+g.items.length+'종 / 총 '+g.totalQty+'개 (최대 '+g.cap+'종)';
+  const hl=g.isCurrent?' style="color:var(--ok);font-weight:600"':(g.isStatic?' style="color:var(--mut)"':'');
+  return '<div class="invtbl'+(g.isCurrent?' cur':'')+'"><div class="ih"><span'+hl+'>'+title+'</span>'+
+    '<span class="hint">사본 '+g.members.length+'개 @ '+loc+'</span></div>'+rows+
+    '<button class="smallbtn" data-add="'+gi+'" '+(g.items.length>=g.cap?'disabled':'')+'>+ 아이템 추가</button>'+
+    (g.items.length>=g.cap?'<span class="hint" style="margin-left:8px">빈 공간이 없어 슬롯 추가는 불가합니다. 기존 슬롯의 <b>아이템 종류</b>/<b>수량</b>을 바꿔 교체하세요.</span>':'')+
+    '</div>';
+}
+function renderInv(){
+  const wrap=document.getElementById('invlist'); wrap.innerHTML="";
+  if(!invGroups.length){ wrap.innerHTML='<p class="hint">편집 가능한 보관함을 찾지 못했습니다.</p>'; return; }
+  const validEp = curEpisode>=0 && curEpisode<EPISODES.length;
+  const epName = validEp? EPISODES[curEpisode] : '없음 (연대표 상태)';
+  let html='';
+  // 안내 배너
+  html+='<p class="hint">현재 진행 에피소드: <b style="color:var(--ok)">'+epName+'</b> (세이브 0x00='+(curEpisode>>>0)+').</p>';
+  const current=[], others=[];
+  invGroups.forEach((g,gi)=>{ (g.isCurrent?current:others).push([g,gi]); });
+  // 현재 보관함 (안전 편집 영역)
+  if(current.length){
+    html+='<div class="zone-safe"><div class="zone-h">✅ 현재 진행 중 에피소드 보관함 — 안전하게 편집 가능</div>';
+    current.forEach(([g,gi])=>html+=invBoxHtml(g,gi));
+    html+='</div>';
+  } else {
+    html+='<div class="zone-safe"><div class="zone-h">✅ 현재 진행 중 에피소드 보관함</div>'+
+      '<p class="hint">현재 진행 중인 에피소드가 없습니다(연대표 상태). 이 세이브에는 <b>안전하게 편집할 현재 보관함이 없습니다.</b> 아래 보관함들은 모두 위험 영역입니다.</p></div>';
+  }
+  // 위험 영역 (펼치기)
+  if(others.length){
+    html+='<details class="zone-danger"><summary>⚠️ 위험 영역 — 현재 에피소드가 아닌 보관함 '+others.length+'개 (펼쳐서 접근)</summary>'+
+      '<div class="danger-warn">⚠️ <b>주의:</b> 아래는 현재 진행 중이 아닌 다른 에피소드의 아카이브 보관함(추정), 과거 시점 사본, 또는 게임 내부 고정 목록입니다.<br>'+
+      '• 라벨은 위치 규칙 기반 <b>추정</b>이며 실제와 다를 수 있습니다 — 반드시 아이템 내용을 확인하세요.<br>'+
+      '• 진행 중이 아닌 보관함 편집은 게임에 반영되지 않거나 예기치 않은 동작을 일으킬 수 있습니다.<br>'+
+      '• <b>"게임 기본 아이템 목록"은 보관함이 아니므로 편집하지 마세요.</b><br>'+
+      '편집 전 반드시 세이브 파일을 백업하세요.</div>';
+    others.forEach(([g,gi])=>html+=invBoxHtml(g,gi));
+    html+='</details>';
+  }
+  wrap.innerHTML=html;
+  wrap.querySelectorAll('[data-k]').forEach(el=>el.addEventListener('change',()=>{
+    const g=invGroups[+el.dataset.g]; const it=g.items[+el.dataset.r];
+    let v=parseInt(el.value,10); if(isNaN(v))v=0;
+    if(el.dataset.k==='id') it.id=v; else it.qty=Math.max(0,Math.min(999,v));
+    writeGroup(g);
+  }));
+  wrap.querySelectorAll('[data-del]').forEach(el=>el.addEventListener('click',()=>{
+    const g=invGroups[+el.dataset.g]; g.items.splice(+el.dataset.del,1); writeGroup(g); renderInv();
+  }));
+  wrap.querySelectorAll('[data-add]').forEach(el=>el.addEventListener('click',()=>{
+    const g=invGroups[+el.dataset.add]; if(g.items.length>=g.cap)return; g.items.push({id:126,qty:1}); writeGroup(g); renderInv();
+  }));
+}
+function loadBuf(arr){
+  buf=new Uint8Array(arr);
+  for(let i=0;i<buf.length;i++) buf[i]^=0xFF;
+  parse();
+  document.getElementById('drop').style.display='none';
+  document.querySelector('main').style.display='grid';
+  document.getElementById('save').disabled=false;
+  document.getElementById('invbtn').disabled=false;
+  scanInv();
+  cur=records.length?0:-1;
+  renderGlobal(); renderList(); renderEdit();
+}
+function doSave(){
+  const out=new Uint8Array(buf.length);
+  for(let i=0;i<buf.length;i++) out[i]=buf[i]^0xFF;
+  // 변조방지 체크섬 재계산: raw 바이트[0..len-3]에 가중치(1,3,5,7) 적용 후 %32000, 끝 2바이트(LE)에 기록
+  let acc=0;
+  for(let i=0;i<out.length-2;i++){ acc=(acc + out[i]*(2*(i&3)+1))%32000; }
+  out[out.length-2]=acc&0xFF; out[out.length-1]=(acc>>8)&0xFF;
+  const blob=new Blob([out],{type:'application/octet-stream'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=fileName.replace(/\.sav$/i,'')+'_edited.sav';
+  a.click();
+}
+
+document.getElementById('open').onclick=()=>document.getElementById('file').click();
+document.getElementById('file').onchange=e=>{const f=e.target.files[0];if(!f)return;fileName=f.name;document.getElementById('fname').textContent=f.name;f.arrayBuffer().then(loadBuf);};
+document.getElementById('save').onclick=doSave;
+document.getElementById('invbtn').onclick=()=>{renderInv();document.getElementById('modal').style.display='flex';};
+document.getElementById('invclose').onclick=()=>document.getElementById('modal').style.display='none';
+document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')document.getElementById('modal').style.display='none';};
+document.getElementById('search').oninput=e=>renderList(e.target.value.toLowerCase());
+const drop=document.getElementById('drop');
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hl');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hl');}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f){fileName=f.name;document.getElementById('fname').textContent=f.name;f.arrayBuffer().then(loadBuf);}});
+</script>
+</body>
+</html>
