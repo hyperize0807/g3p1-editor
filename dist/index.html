@@ -210,10 +210,14 @@ function renderList(filter=""){
   }
 }
 
-function opt(table,val){
+function opt(table,val,desc){
   const t=TABLES[table]||{};
-  let s='<option value="'+val+'">'+val+' — '+(t[val]!==undefined?t[val]:'(미정의)')+'</option>';
-  s+=Object.keys(t).map(Number).sort((a,b)=>a-b).map(k=>'<option value="'+k+'">'+k+' — '+t[k]+'</option>').join("");
+  const useDesc = desc===true && table==='Item';   // 아이템 드롭다운: 옵션 텍스트에 설명(무기는 TS/SS) 표기
+  const lab=k=>{ let s=k+' — '+(t[k]!==undefined?t[k]:'(미정의)');
+    if(useDesc){ const tip=itemTip(+k); if(tip) s+='  ·  '+tip; }
+    return useDesc? escA(s) : s; };
+  let s='<option value="'+val+'">'+lab(val)+'</option>';
+  s+=Object.keys(t).map(Number).sort((a,b)=>a-b).map(k=>'<option value="'+k+'">'+lab(k)+'</option>').join("");
   return s;
 }
 function selField(label,off,table,size){
@@ -240,7 +244,7 @@ function equipField(label,off){   // 장비 슬롯: 라벨 + 드롭다운 + 우�
   const v=u16(off), e=edescHtml(v);
   return '<div class="fld efld">'+
     '<label>'+label+'</label>'+
-    '<select data-off="'+off+'" data-size="2" data-kind="sel" data-item="1" title="'+escA(itemTip(v))+'">'+opt("Item",v)+'</select>'+
+    '<select data-off="'+off+'" data-size="2" data-kind="sel" data-item="1" title="'+escA(itemTip(v))+'">'+opt("Item",v,true)+'</select>'+
     '<div class="edesc'+(e.empty?' empty':'')+'">'+e.html+'</div>'+
   '</div>';
 }
@@ -447,7 +451,7 @@ function invBoxHtml(g,gi){
   const loc=g.members.map(o=>'0x'+o.toString(16)).join(', ');
   const rows=g.items.map((it,ri)=>
     '<div class="invrow">'+
-     '<select data-g="'+gi+'" data-r="'+ri+'" data-k="id" title="'+escA(itemTip(it.id))+'">'+opt("Item",it.id)+'</select>'+
+     '<select data-g="'+gi+'" data-r="'+ri+'" data-k="id" title="'+escA(itemTip(it.id))+'">'+opt("Item",it.id,true)+'</select>'+
      '<input type="number" min="0" max="999" data-g="'+gi+'" data-r="'+ri+'" data-k="qty" value="'+it.qty+'">'+
      '<button class="del smallbtn" data-g="'+gi+'" data-del="'+ri+'">✕</button>'+
     '</div>').join("");
