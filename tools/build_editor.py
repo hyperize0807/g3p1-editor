@@ -77,6 +77,11 @@ HTML = r'''<!DOCTYPE html>
   .dictrow .de{color:var(--mut);font-size:11px;margin-left:6px}
   .dictrow .dd{color:var(--fg);font-size:12px;margin-top:2px}
   .dictrow .dd.none{color:#666}
+  .dictrow .dcat{font-size:10px;color:var(--acc);border:1px solid var(--line);border-radius:3px;padding:0 5px;margin-left:6px}
+  .dictrow .dts{color:var(--warn);font-size:12px;margin-left:8px;font-weight:600}
+  #dictcats{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
+  .catbtn{font-size:12px;padding:3px 9px}
+  .catbtn.on{background:var(--acc);color:#0b0d12;border-color:var(--acc);font-weight:600}
   .zone-safe{border:1px solid #2f6b45;border-radius:8px;padding:6px 12px 12px;margin:10px 0;background:#16241c}
   .zone-h{color:var(--ok);font-weight:600;font-size:13px;margin:8px 0}
   .zone-danger{border:1px solid #6b3a3a;border-radius:8px;margin:14px 0;background:#241818}
@@ -115,8 +120,17 @@ HTML = r'''<!DOCTYPE html>
 </div></div>
 <div id="dictmodal"><div class="box">
   <h2>📖 아이템 사전</h2>
-  <p class="hint">아이템 이름(한/영)과 게임 설명입니다. 이름·영문·설명·번호로 검색하세요.</p>
+  <p class="hint">이름(한/영)·설명로 검색하고 분류로 거를 수 있습니다. <b>무기</b>는 TS(단일 공격력)·SS(연속기 공격력)를 표시합니다. 방어구/소비 등은 설명 괄호 안에 효과가 있습니다.</p>
   <input id="dictsearch" placeholder="검색…" autocomplete="off">
+  <div id="dictcats">
+    <button data-cat="" class="catbtn on">전체</button>
+    <button data-cat="무기" class="catbtn">무기</button>
+    <button data-cat="써크렛" class="catbtn">써크렛</button>
+    <button data-cat="방어구" class="catbtn">방어구</button>
+    <button data-cat="장신구" class="catbtn">장신구</button>
+    <button data-cat="소비" class="catbtn">소비</button>
+    <button data-cat="기타" class="catbtn">기타</button>
+  </div>
   <div id="dictlist"></div>
   <div style="text-align:right;margin-top:12px"><button id="dictclose" class="primary">닫기</button></div>
 </div></div>
@@ -129,8 +143,14 @@ HTML = r'''<!DOCTYPE html>
 const TABLES = __TABLES__;
 const ABIL_MAX = __ABILMAX__;   // 어빌리티별 최대 레벨 (Abi.dat record+0x20). 없으면 기본 9.
 const abilMax = id => (ABIL_MAX[id] || 9);
-const ITEM_INFO = __ITEMINFO__; // 아이템 사전: id -> {name, eng, desc} (Item.dat)
+const ITEM_INFO = __ITEMINFO__; // 아이템 사전: id -> {eng, cat, desc?, ts?, ss?} (Item.dat). 이름은 TABLES.Item 사용.
 const itemDesc = id => { const v=ITEM_INFO[id]; return v && v.desc ? v.desc : ''; };
+const itemCat  = id => { const v=ITEM_INFO[id]; return v && v.cat ? v.cat : '기타'; };
+const itemTS   = id => { const v=ITEM_INFO[id]; return v ? (v.ts||0) : 0; };
+const itemSS   = id => { const v=ITEM_INFO[id]; return v ? (v.ss||0) : 0; };
+const isWeapon = id => itemTS(id)>0 || itemSS(id)>0;            // TS/SS 보유 = 물리 무기
+// 마우스오버 툴팁: 무기면 TS/SS 먼저, 그 뒤 설명
+const itemTip = id => { const p=[]; if(isWeapon(id)) p.push('TS:'+itemTS(id)+' SS:'+itemSS(id)); const d=itemDesc(id); if(d)p.push(d); return p.join(' · '); };
 const escA = s => (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const MARK=[0x30,0x3A,0x10,0x10], REC=0x154;
 let buf=null, fileName="G3.sav", records=[], cur=-1, period=0;
@@ -205,7 +225,7 @@ function opt(table,val){
 function selField(label,off,table,size){
   const v= size===1? buf[off] : u16(off);
   const isItem = table==="Item";
-  const extra = isItem ? ' data-item="1" title="'+escA(itemDesc(v))+'"' : '';
+  const extra = isItem ? ' data-item="1" title="'+escA(itemTip(v))+'"' : '';
   return '<div class="fld"><label>'+label+' <span class="off">@0x'+off.toString(16)+'</span></label>'+
    '<select data-off="'+off+'" data-size="'+(size||2)+'" data-kind="sel"'+extra+'>'+opt(table,v)+'</select></div>';
 }
@@ -280,7 +300,7 @@ function renderEdit(){
     '<details><summary>16비트 값 그리드 (직접 편집)</summary>'+raw+'</details>'+
     '<details><summary>HEX 덤프 (읽기전용, 340바이트)</summary><div class="hex">'+hex+'</div></details>'+
   '</div>';
-  e.querySelectorAll('[data-off]').forEach(el=>el.addEventListener('change',()=>{ applyField(el); if(el.dataset.item) el.title=itemDesc(+el.value); }));
+  e.querySelectorAll('[data-off]').forEach(el=>el.addEventListener('change',()=>{ applyField(el); if(el.dataset.item) el.title=itemTip(+el.value); }));
   e.querySelectorAll('[data-abil]').forEach(el=>el.addEventListener('change',()=>{
     const id=+el.dataset.abil, mx=abilMax(id);
     let v=parseInt(el.value,10); if(isNaN(v)||v<0)v=0; if(v>mx){v=mx; el.value=mx;}
@@ -411,7 +431,7 @@ function invBoxHtml(g,gi){
   const loc=g.members.map(o=>'0x'+o.toString(16)).join(', ');
   const rows=g.items.map((it,ri)=>
     '<div class="invrow">'+
-     '<select data-g="'+gi+'" data-r="'+ri+'" data-k="id" title="'+escA(itemDesc(it.id))+'">'+opt("Item",it.id)+'</select>'+
+     '<select data-g="'+gi+'" data-r="'+ri+'" data-k="id" title="'+escA(itemTip(it.id))+'">'+opt("Item",it.id)+'</select>'+
      '<input type="number" min="0" max="999" data-g="'+gi+'" data-r="'+ri+'" data-k="qty" value="'+it.qty+'">'+
      '<button class="del smallbtn" data-g="'+gi+'" data-del="'+ri+'">✕</button>'+
     '</div>').join("");
@@ -457,7 +477,7 @@ function renderInv(){
   wrap.querySelectorAll('[data-k]').forEach(el=>el.addEventListener('change',()=>{
     const g=invGroups[+el.dataset.g]; const it=g.items[+el.dataset.r];
     let v=parseInt(el.value,10); if(isNaN(v))v=0;
-    if(el.dataset.k==='id'){ it.id=v; el.title=itemDesc(v); } else it.qty=Math.max(0,Math.min(999,v));
+    if(el.dataset.k==='id'){ it.id=v; el.title=itemTip(v); } else it.qty=Math.max(0,Math.min(999,v));
     writeGroup(g);
   }));
   wrap.querySelectorAll('[data-del]').forEach(el=>el.addEventListener('click',()=>{
@@ -467,15 +487,21 @@ function renderInv(){
     const g=invGroups[+el.dataset.add]; if(g.items.length>=g.cap)return; g.items.push({id:126,qty:1}); writeGroup(g); renderInv();
   }));
 }
+let dictCat="";   // 분류 필터(빈값=전체)
 function renderDict(filter=""){
   const wrap=document.getElementById('dictlist');
+  const nameOf=id=>(TABLES.Item&&TABLES.Item[id])||(ITEM_INFO[id]&&ITEM_INFO[id].name)||'';
   const ids=Object.keys(ITEM_INFO).map(Number).filter(id=>id>=1).sort((a,b)=>a-b);
   let html='';
   for(const id of ids){
-    const v=ITEM_INFO[id]||{}; const nm=v.name||'', eng=v.eng||'', dd=v.desc||'';
+    const v=ITEM_INFO[id]||{}; const nm=nameOf(id), eng=v.eng||'', dd=v.desc||'', cat=v.cat||'기타';
+    if(dictCat && cat!==dictCat) continue;
     const hay=(id+' '+nm+' '+eng+' '+dd).toLowerCase();
     if(filter && !hay.includes(filter)) continue;
-    html+='<div class="dictrow"><span class="dn">'+id+' — '+escA(nm)+'</span>'+(eng?'<span class="de">'+escA(eng)+'</span>':'')+
+    let stat='';
+    if(isWeapon(id)) stat='<span class="dts">TS:'+itemTS(id)+' SS:'+itemSS(id)+'</span>';
+    html+='<div class="dictrow"><span class="dn">'+id+' — '+escA(nm)+'</span>'+
+      '<span class="dcat">'+cat+'</span>'+(eng?'<span class="de">'+escA(eng)+'</span>':'')+stat+
       '<div class="dd'+(dd?'':' none')+'">'+(dd?escA(dd):'(설명 없음)')+'</div></div>';
   }
   wrap.innerHTML = html || '<p class="hint">검색 결과가 없습니다.</p>';
@@ -516,6 +542,11 @@ document.getElementById('dictbtn').onclick=()=>{renderDict(document.getElementBy
 document.getElementById('dictclose').onclick=()=>document.getElementById('dictmodal').style.display='none';
 document.getElementById('dictmodal').onclick=e=>{if(e.target.id==='dictmodal')document.getElementById('dictmodal').style.display='none';};
 document.getElementById('dictsearch').oninput=e=>renderDict(e.target.value.toLowerCase());
+document.querySelectorAll('#dictcats .catbtn').forEach(b=>b.onclick=()=>{
+  dictCat=b.dataset.cat;
+  document.querySelectorAll('#dictcats .catbtn').forEach(x=>x.classList.toggle('on',x===b));
+  renderDict(document.getElementById('dictsearch').value.toLowerCase());
+});
 document.getElementById('search').oninput=e=>renderList(e.target.value.toLowerCase());
 const drop=document.getElementById('drop');
 ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hl');}));

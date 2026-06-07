@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-# dats/Item.dat -> tools/item_info.json  (아이템 한글명/영문명/설명 추출)
-# Item.dat: XOR 0xFF 난독화(텍스트), 204바이트 고정 레코드, record(id)=(id-1)*204 (id 1=단검..).
-#   +0x02 한글 이름(CP949), +0x20 영문 이름(ASCII), +0x69 부근 한글 설명(CP949,null종료).
-import json, os, struct
+# dats/Item.dat -> tools/item_info.json  (아이템 영문명/설명/공격스탯/분류 추출)
+# Item.dat: 텍스트는 XOR 0xFF, 숫자는 평문(raw). 204바이트 고정 레코드, record(id)=(id-1)*204 (id 1=단검..).
+#   [text/decoded] +0x02 한글명(참고), +0x20 영문명, +0x6A 설명(null종료 CP949)
+#   [raw/평문]      +0x50 TS(단일 공격력), +0x69 SS(연속 공격 스킬 공격력)  ※무기만 >0
+# 분류(cat)는 Item.txt id 구간 기반(게임상 고정): 무기/써크렛/방어구/장신구/소비/기타.
+# (한글 이름은 tools/G3Data/Item.txt(tables.json)에서 가져오므로 여기선 제외 → 오타수정 단일소스 유지)
+import json, os
 
 GAME = r"D:\DGGL\Games\G3P1103p_Win_260518"      # 게임 설치 경로
 PROJ = os.path.dirname(os.path.abspath(__file__))  # tools/
 REC = 204
-
-def load(p):  # XOR 0xFF 디코드
-    return bytes(b ^ 0xFF for b in open(p, "rb").read())
-
-NAME_OFF, ENG_OFF, DESC_OFF = 0x02, 0x20, 0x6A   # 레코드 내 고정 필드 오프셋
+ENG_OFF, DESC_OFF, TS_OFF, SS_OFF = 0x20, 0x6A, 0x50, 0x69
 
 def cstr(d, o, mx=96):
     e = o
@@ -22,31 +21,41 @@ def cstr(d, o, mx=96):
     except Exception:
         return ""
 
+def category(i):
+    if 70 <= i <= 75:   return "써크렛"
+    if 76 <= i <= 96:   return "방어구"
+    if 97 <= i <= 125:  return "장신구"
+    if 126 <= i <= 143: return "소비"
+    if (1 <= i <= 69) or (144 <= i <= 181): return "무기"
+    return "기타"
+
 def main():
-    d = load(os.path.join(GAME, "dats", "Item.dat"))
+    raw = open(os.path.join(GAME, "dats", "Item.dat"), "rb").read()  # 평문 숫자용
+    d = bytes(b ^ 0xFF for b in raw)                                  # 텍스트 디코드용
     n = len(d) // REC
     info = {}
     for r in range(n):
         b = r * REC
         item_id = r + 1                      # record index 0 = item id 1
-        name = cstr(d, b + NAME_OFF)
         eng = cstr(d, b + ENG_OFF)
-        desc = cstr(d, b + DESC_OFF)         # 설명: 고정 오프셋 +0x6A (null 종료 CP949)
-        # 설명이 이름과 동일/포함뿐이면(짧은 잡음) 비워둠
-        entry = {"name": name, "eng": eng}
+        name = cstr(d, b + 0x02)             # 잡음 설명 필터용(참고)
+        desc = cstr(d, b + DESC_OFF)
+        ts, ss = raw[b + TS_OFF], raw[b + SS_OFF]
+        entry = {"eng": eng, "cat": category(item_id)}
         if desc and desc != name:
             entry["desc"] = desc
+        if ts: entry["ts"] = ts              # 무기만 >0
+        if ss: entry["ss"] = ss
         info[item_id] = entry
-    # id 0 = 없음
-    info[0] = {"name": "없음", "eng": ""}
+    info[0] = {"eng": "", "cat": "기타"}     # 없음
     out = os.path.join(PROJ, "item_info.json")
     json.dump(info, open(out, "w", encoding="utf-8"), ensure_ascii=False)
     have = sum(1 for v in info.values() if v.get("desc"))
-    print("records=%d, item_info entries=%d, with desc=%d -> %s" % (n, len(info), have, out))
-    # 검증 샘플
-    for sid in (1, 25, 126, 127, 106):
+    wep = sum(1 for v in info.values() if v.get("ts") or v.get("ss"))
+    print("records=%d entries=%d desc=%d weapon(ts/ss)=%d -> %s" % (n, len(info), have, wep, out))
+    for sid in (7, 16, 22, 53, 25, 126):     # 검증 샘플 (TS/SS 예시 포함)
         v = info.get(sid, {})
-        print("  id%-3d %-14s | %s" % (sid, v.get("name", ""), v.get("desc", "(설명없음)")))
+        print("  id%-3d [%s] TS:%s SS:%s | %s" % (sid, v.get("cat"), v.get("ts"), v.get("ss"), v.get("desc", "")))
 
 if __name__ == "__main__":
     main()
