@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # 에디터 빌더: tools/tables.json + tools/abil_max.json 을 index.html(dist/)에 내장하여 생성.
 import json, os
-VERSION = "0.9.0"                                            # 에디터 버전(게임 버전 1.03+/1.04와 무관). 릴리스 태그 vX.Y.Z 와 일치시킬 것.
+VERSION = "0.9.1"                                            # 에디터 버전(게임 버전 1.03+/1.04와 무관). 릴리스 태그 vX.Y.Z 와 일치시킬 것.
 PROJ = os.path.dirname(os.path.abspath(__file__))            # tools/
 ROOT = os.path.dirname(PROJ)                                  # 저장소 루트
 DIST = os.path.join(ROOT, 'dist'); os.makedirs(DIST, exist_ok=True)
@@ -95,7 +95,7 @@ HTML = r'''<!DOCTYPE html>
   .invtbl{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:12px 0;background:var(--panel2)}
   .invtbl.cur{border-color:var(--ok)}
   .invtbl .ih{display:flex;justify-content:space-between;align-items:center;color:var(--acc);font-size:13px;margin-bottom:8px}
-  .invrow{display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:5px}
+  .invrow{display:grid;grid-template-columns:minmax(0,1fr) 90px 32px;gap:8px;margin-bottom:5px}
   .invrow .del{background:#3a2326;border-color:#5a3338}
   .smallbtn{font-size:12px;padding:3px 8px}
   /* 커스텀 아이템 드롭다운 */
@@ -104,7 +104,7 @@ HTML = r'''<!DOCTYPE html>
   .isel-cur:hover{border-color:var(--acc)}
   .in{color:var(--acc);font-weight:700;white-space:nowrap}
   .iw{color:var(--warn);font-size:12px;white-space:nowrap}
-  .isel-cur .im{color:var(--mut);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .isel-cur .im{color:var(--mut);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
   .isel-arr{margin-left:auto;color:var(--mut);font-size:11px}
   .isel-menu{position:fixed;z-index:100;background:var(--panel);border:1px solid var(--acc);border-radius:6px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.55)}
   .isel-q{position:sticky;top:0;width:100%;padding:7px 9px;border:0;border-bottom:1px solid var(--line);background:var(--panel2);color:var(--fg)}
@@ -292,7 +292,7 @@ function pickItem(isel,id){
   isel.dataset.val=id;
   isel.querySelector('.isel-cur').innerHTML=curHtml(id);
   if(isel.dataset.ioff!==undefined){ const off=+isel.dataset.ioff, rel=off-records[cur]; for(const t of editTargets()) setu16(t+rel,id); }
-  else if(isel.dataset.ginv!==undefined){ const g=invGroups[+isel.dataset.ginv]; g.items[+isel.dataset.rinv].id=id; writeGroup(g); }
+  else if(isel.dataset.ginv!==undefined){ const g=invGroups[+isel.dataset.ginv]; g.items[+isel.dataset.rinv].id=id; writeGroup(g); if(document.getElementById('modal').style.display==='flex') sizeInvModal(); }
   closeItemMenus();
 }
 function itemField(label,off){ return '<div class="fld"><label>'+label+'</label>'+itemSelHtml('data-ioff="'+off+'"',u16(off))+'</div>'; }
@@ -517,6 +517,27 @@ function invBoxHtml(g,gi){
     (g.items.length>=g.cap?'<span class="hint" style="margin-left:8px">빈 공간이 없어 슬롯 추가는 불가합니다. 기존 슬롯의 <b>아이템 종류</b>/<b>수량</b>을 바꿔 교체하세요.</span>':'')+
     '</div>';
 }
+// 보관함 모달 폭을 현재 아이템 중 가장 긴 텍스트(이름+TS/SS+설명)에 맞춰 동적 조정.
+// 긴 설명이 잘리지 않게 박스를 넓히되, 화면(94vw)을 넘으면 .im 줄임표로 안전하게 잘림.
+let _measCtx=null;
+function measureText(txt,font){ if(!_measCtx)_measCtx=document.createElement('canvas').getContext('2d'); _measCtx.font=font; return _measCtx.measureText(txt||'').width; }
+const _F14='700 14px "Segoe UI",Malgun Gothic,sans-serif', _F12='12px "Segoe UI",Malgun Gothic,sans-serif';
+function itemRowTextWidth(id){            // 닫힌 드롭다운 한 줄의 텍스트 폭(px)
+  let w=measureText(id+' '+itemName(id), _F14);
+  if(isWeapon(id)) w+=8+measureText('TS:'+itemTS(id)+' SS:'+itemSS(id), _F12);
+  const d=itemDesc(id); if(d) w+=8+measureText(d, _F12);
+  return w;
+}
+function sizeInvModal(){
+  const box=document.querySelector('#modal .box'); if(!box) return;
+  let maxW=0;
+  for(const g of invGroups) for(const it of g.items){ const w=itemRowTextWidth(it.id); if(w>maxW)maxW=w; }
+  if(!maxW){ box.style.width=''; return; }
+  // 드롭다운칸(텍스트+패딩+화살표) + 수량(90)+삭제(32) + gap(16) + invtbl 패딩(24) + box 패딩(44) + 스크롤 여유(18)
+  const need=Math.ceil(maxW + 56 + 90 + 32 + 16 + 24 + 44 + 18);
+  const cap=Math.floor(window.innerWidth*0.94);     // CSS max-width:94vw 와 일치(좁은 화면 상한)
+  box.style.width=Math.min(cap, Math.max(760, need))+'px';   // [760, cap] 범위로 클램프, need 우선
+}
 function renderInv(){
   const wrap=document.getElementById('invlist'); wrap.innerHTML="";
   if(!invGroups.length){ wrap.innerHTML='<p class="hint">편집 가능한 보관함을 찾지 못했습니다.</p>'; return; }
@@ -548,6 +569,7 @@ function renderInv(){
     html+='</details>';
   }
   wrap.innerHTML=html;
+  sizeInvModal();
   wrap.querySelectorAll('[data-k]').forEach(el=>el.addEventListener('change',()=>{
     const g=invGroups[+el.dataset.g]; const it=g.items[+el.dataset.r];
     let v=parseInt(el.value,10); if(isNaN(v))v=0;
