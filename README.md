@@ -18,6 +18,7 @@
 - 💰 소지금 (에피소드별, 현재 진행 에피소드 자동 표시)
 - 🧑 캐릭터: 식별정보 / 능력치(HP·EXP·STR~WTP) / 장비 / **어빌리티(최대 레벨 자동 적용)**
 - 🎒 보관함: 현재 에피소드는 안전 편집, 그 외는 "위험 영역"으로 분리
+- 📖 아이템 사전: 이름(한/영)·설명 검색 + 장비/보관함에서 아이템 설명 마우스오버 툴팁
 - 중복 없는 캐릭터 목록 + 모든 에피소드 블록 일괄 적용
 - 저장 시 변조방지 체크섬 자동 재계산
 
@@ -30,11 +31,13 @@ dist/        배포물 (최종 사용자용)
 docs/
   SAVE_FORMAT.md 세이브 파일 포맷 명세 (역분석 결과)
 tools/        유지보수/빌드용
-  build_editor.py   index.html 빌드 (tables.json + abil_max.json 내장)
+  build_editor.py   index.html 빌드 (tables.json + abil_max.json + item_info.json 내장)
   gen_tables.py     G3Data/*.txt → tables.json
   abimax2.py        Abi.dat → abil_max.json (어빌리티 최대 레벨)
+  gen_itemdat.py    Item.dat → item_info.json (아이템 이름/설명)
   tables.json       이름 테이블(아이템/캐릭터/직업 등)
   abil_max.json     어빌리티별 최대 레벨
+  item_info.json    아이템 이름(한/영)·설명
   G3Data/           게임에서 추출한 이름 테이블 원본(CP949)
 samples/      (git 제외) 테스트용 세이브, 원본 SaveEdit.exe
 ```
@@ -52,6 +55,7 @@ python tools/build_editor.py        # tools/*.json 을 index.html(dist/)에 내�
 ```sh
 python tools/gen_tables.py          # G3Data/*.txt -> tools/tables.json
 python tools/abimax2.py             # <게임>/dats/Abi.dat -> tools/abil_max.json
+python tools/gen_itemdat.py         # <게임>/dats/Item.dat -> tools/item_info.json
 ```
 
 ## 포맷 명세

@@ -6,6 +6,7 @@ ROOT = os.path.dirname(PROJ)                                  # 저장소 루트
 DIST = os.path.join(ROOT, 'dist'); os.makedirs(DIST, exist_ok=True)
 tables = open(os.path.join(PROJ, 'tables.json'), encoding='utf-8').read()
 abil_max = open(os.path.join(PROJ, 'abil_max.json'), encoding='utf-8').read()
+item_info = open(os.path.join(PROJ, 'item_info.json'), encoding='utf-8').read()
 
 HTML = r'''<!DOCTYPE html>
 <html lang="ko">
@@ -67,9 +68,15 @@ HTML = r'''<!DOCTYPE html>
   .hex{font-family:Consolas,monospace;font-size:11px;color:var(--mut);white-space:pre;overflow:auto;background:#181a1f;padding:8px;border-radius:6px}
   .hint{color:var(--mut);font-size:12px}
   .applyall{display:flex;gap:6px;align-items:center;color:var(--mut);font-size:12px}
-  #modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;align-items:flex-start;justify-content:center}
-  #modal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:40px;width:760px;max-width:94vw;max-height:86vh;overflow:auto;padding:18px 22px}
-  #modal h2{margin:0 0 4px;font-size:16px}
+  #modal,#dictmodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;align-items:flex-start;justify-content:center}
+  #modal .box,#dictmodal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:40px;width:760px;max-width:94vw;max-height:86vh;overflow:auto;padding:18px 22px}
+  #modal h2,#dictmodal h2{margin:0 0 4px;font-size:16px}
+  #dictsearch{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--fg);margin-bottom:6px;position:sticky;top:0}
+  .dictrow{padding:7px 4px;border-bottom:1px solid #2c303a}
+  .dictrow .dn{font-weight:600}
+  .dictrow .de{color:var(--mut);font-size:11px;margin-left:6px}
+  .dictrow .dd{color:var(--fg);font-size:12px;margin-top:2px}
+  .dictrow .dd.none{color:#666}
   .zone-safe{border:1px solid #2f6b45;border-radius:8px;padding:6px 12px 12px;margin:10px 0;background:#16241c}
   .zone-h{color:var(--ok);font-weight:600;font-size:13px;margin:8px 0}
   .zone-danger{border:1px solid #6b3a3a;border-radius:8px;margin:14px 0;background:#241818}
@@ -93,6 +100,7 @@ HTML = r'''<!DOCTYPE html>
   <input type="file" id="file" accept=".sav" style="display:none">
   <button id="open">📂 .sav 열기</button>
   <button id="invbtn" disabled>🎒 보관함 편집</button>
+  <button id="dictbtn">📖 아이템 사전</button>
   <button id="save" class="primary" disabled>💾 저장(다운로드)</button>
   <span id="fname" class="hint"></span>
   <span class="applyall" style="margin-left:auto"><input type="checkbox" id="applyall" checked> 모든 에피소드 블록에 적용(권장)</span>
@@ -105,6 +113,13 @@ HTML = r'''<!DOCTYPE html>
   <div id="invlist"></div>
   <div style="text-align:right;margin-top:12px"><button id="invclose" class="primary">닫기</button></div>
 </div></div>
+<div id="dictmodal"><div class="box">
+  <h2>📖 아이템 사전</h2>
+  <p class="hint">아이템 이름(한/영)과 게임 설명입니다. 이름·영문·설명·번호로 검색하세요.</p>
+  <input id="dictsearch" placeholder="검색…" autocomplete="off">
+  <div id="dictlist"></div>
+  <div style="text-align:right;margin-top:12px"><button id="dictclose" class="primary">닫기</button></div>
+</div></div>
 <main>
   <div id="list"><input id="search" placeholder="이름/번호 검색…"><div id="rows"></div></div>
   <div id="edit"><p class="hint">왼쪽에서 캐릭터를 선택하세요.</p></div>
@@ -114,6 +129,9 @@ HTML = r'''<!DOCTYPE html>
 const TABLES = __TABLES__;
 const ABIL_MAX = __ABILMAX__;   // 어빌리티별 최대 레벨 (Abi.dat record+0x20). 없으면 기본 9.
 const abilMax = id => (ABIL_MAX[id] || 9);
+const ITEM_INFO = __ITEMINFO__; // 아이템 사전: id -> {name, eng, desc} (Item.dat)
+const itemDesc = id => { const v=ITEM_INFO[id]; return v && v.desc ? v.desc : ''; };
+const escA = s => (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 const MARK=[0x30,0x3A,0x10,0x10], REC=0x154;
 let buf=null, fileName="G3.sav", records=[], cur=-1, period=0;
 const dec949 = new TextDecoder('euc-kr');
@@ -186,8 +204,10 @@ function opt(table,val){
 }
 function selField(label,off,table,size){
   const v= size===1? buf[off] : u16(off);
+  const isItem = table==="Item";
+  const extra = isItem ? ' data-item="1" title="'+escA(itemDesc(v))+'"' : '';
   return '<div class="fld"><label>'+label+' <span class="off">@0x'+off.toString(16)+'</span></label>'+
-   '<select data-off="'+off+'" data-size="'+(size||2)+'" data-kind="sel">'+opt(table,v)+'</select></div>';
+   '<select data-off="'+off+'" data-size="'+(size||2)+'" data-kind="sel"'+extra+'>'+opt(table,v)+'</select></div>';
 }
 function numField(label,off,size,kind){
   const v= kind==='u32'? u32(off) : size===1? buf[off] : u16(off);
@@ -260,7 +280,7 @@ function renderEdit(){
     '<details><summary>16비트 값 그리드 (직접 편집)</summary>'+raw+'</details>'+
     '<details><summary>HEX 덤프 (읽기전용, 340바이트)</summary><div class="hex">'+hex+'</div></details>'+
   '</div>';
-  e.querySelectorAll('[data-off]').forEach(el=>el.addEventListener('change',()=>applyField(el)));
+  e.querySelectorAll('[data-off]').forEach(el=>el.addEventListener('change',()=>{ applyField(el); if(el.dataset.item) el.title=itemDesc(+el.value); }));
   e.querySelectorAll('[data-abil]').forEach(el=>el.addEventListener('change',()=>{
     const id=+el.dataset.abil, mx=abilMax(id);
     let v=parseInt(el.value,10); if(isNaN(v)||v<0)v=0; if(v>mx){v=mx; el.value=mx;}
@@ -391,7 +411,7 @@ function invBoxHtml(g,gi){
   const loc=g.members.map(o=>'0x'+o.toString(16)).join(', ');
   const rows=g.items.map((it,ri)=>
     '<div class="invrow">'+
-     '<select data-g="'+gi+'" data-r="'+ri+'" data-k="id">'+opt("Item",it.id)+'</select>'+
+     '<select data-g="'+gi+'" data-r="'+ri+'" data-k="id" title="'+escA(itemDesc(it.id))+'">'+opt("Item",it.id)+'</select>'+
      '<input type="number" min="0" max="999" data-g="'+gi+'" data-r="'+ri+'" data-k="qty" value="'+it.qty+'">'+
      '<button class="del smallbtn" data-g="'+gi+'" data-del="'+ri+'">✕</button>'+
     '</div>').join("");
@@ -437,7 +457,7 @@ function renderInv(){
   wrap.querySelectorAll('[data-k]').forEach(el=>el.addEventListener('change',()=>{
     const g=invGroups[+el.dataset.g]; const it=g.items[+el.dataset.r];
     let v=parseInt(el.value,10); if(isNaN(v))v=0;
-    if(el.dataset.k==='id') it.id=v; else it.qty=Math.max(0,Math.min(999,v));
+    if(el.dataset.k==='id'){ it.id=v; el.title=itemDesc(v); } else it.qty=Math.max(0,Math.min(999,v));
     writeGroup(g);
   }));
   wrap.querySelectorAll('[data-del]').forEach(el=>el.addEventListener('click',()=>{
@@ -446,6 +466,19 @@ function renderInv(){
   wrap.querySelectorAll('[data-add]').forEach(el=>el.addEventListener('click',()=>{
     const g=invGroups[+el.dataset.add]; if(g.items.length>=g.cap)return; g.items.push({id:126,qty:1}); writeGroup(g); renderInv();
   }));
+}
+function renderDict(filter=""){
+  const wrap=document.getElementById('dictlist');
+  const ids=Object.keys(ITEM_INFO).map(Number).filter(id=>id>=1).sort((a,b)=>a-b);
+  let html='';
+  for(const id of ids){
+    const v=ITEM_INFO[id]||{}; const nm=v.name||'', eng=v.eng||'', dd=v.desc||'';
+    const hay=(id+' '+nm+' '+eng+' '+dd).toLowerCase();
+    if(filter && !hay.includes(filter)) continue;
+    html+='<div class="dictrow"><span class="dn">'+id+' — '+escA(nm)+'</span>'+(eng?'<span class="de">'+escA(eng)+'</span>':'')+
+      '<div class="dd'+(dd?'':' none')+'">'+(dd?escA(dd):'(설명 없음)')+'</div></div>';
+  }
+  wrap.innerHTML = html || '<p class="hint">검색 결과가 없습니다.</p>';
 }
 function loadBuf(arr){
   buf=new Uint8Array(arr);
@@ -479,6 +512,10 @@ document.getElementById('save').onclick=doSave;
 document.getElementById('invbtn').onclick=()=>{renderInv();document.getElementById('modal').style.display='flex';};
 document.getElementById('invclose').onclick=()=>document.getElementById('modal').style.display='none';
 document.getElementById('modal').onclick=e=>{if(e.target.id==='modal')document.getElementById('modal').style.display='none';};
+document.getElementById('dictbtn').onclick=()=>{renderDict(document.getElementById('dictsearch').value.toLowerCase());document.getElementById('dictmodal').style.display='flex';};
+document.getElementById('dictclose').onclick=()=>document.getElementById('dictmodal').style.display='none';
+document.getElementById('dictmodal').onclick=e=>{if(e.target.id==='dictmodal')document.getElementById('dictmodal').style.display='none';};
+document.getElementById('dictsearch').oninput=e=>renderDict(e.target.value.toLowerCase());
 document.getElementById('search').oninput=e=>renderList(e.target.value.toLowerCase());
 const drop=document.getElementById('drop');
 ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hl');}));
@@ -488,7 +525,7 @@ drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f){fileName=
 </body>
 </html>'''
 
-HTML = HTML.replace("__TABLES__", tables).replace("__ABILMAX__", abil_max)
+HTML = HTML.replace("__TABLES__", tables).replace("__ABILMAX__", abil_max).replace("__ITEMINFO__", item_info)
 out = os.path.join(DIST, 'index.html')
 open(out, 'w', encoding='utf-8').write(HTML)
 print("written:", out, len(HTML), "bytes")
