@@ -46,10 +46,6 @@
   .fld{display:grid;grid-template-columns:150px 1fr;gap:10px;align-items:center;margin-bottom:7px}
   .fld label{color:var(--mut)}
   .fld .off{color:#666;font-size:11px}
-  .fld.efld{grid-template-columns:90px minmax(0,1fr) minmax(0,1.5fr)}
-  .efld .edesc{color:var(--fg);font-size:12px;line-height:1.4;align-self:center;background:#202329;border:1px solid var(--line);border-radius:5px;padding:5px 8px;min-height:31px}
-  .efld .edesc.empty{color:#666}
-  .efld .edesc .ts{color:var(--warn);font-weight:600;margin-right:6px}
   input[type=number],input[type=text],select{background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:5px;padding:5px 7px;width:100%}
   input[readonly]{color:var(--mut)}
   .combo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
@@ -225,7 +221,7 @@ function selField(label,off,table,size){
   const isItem = table==="Item";
   const extra = isItem ? ' data-item="1" title="'+escA(itemTip(v))+'"' : '';
   return '<div class="fld"><label>'+label+' <span class="off">@0x'+off.toString(16)+'</span></label>'+
-   '<select data-off="'+off+'" data-size="'+(size||2)+'" data-kind="sel"'+extra+'>'+opt(table,v)+'</select></div>';
+   '<select data-off="'+off+'" data-size="'+(size||2)+'" data-kind="sel"'+extra+'>'+opt(table,v,true)+'</select></div>';
 }
 function numField(label,off,size,kind){
   const v= kind==='u32'? u32(off) : size===1? buf[off] : u16(off);
@@ -233,21 +229,6 @@ function numField(label,off,size,kind){
    '<input type="number" data-off="'+off+'" data-size="'+(size||2)+'" data-kind="'+(kind||'int')+'" value="'+v+'"></div>';
 }
 
-function edescHtml(id){   // 장비 우측 상시 설명: 무기면 TS/SS 강조 + 설명
-  if(!id) return {empty:true, html:'(없음 / 빈 슬롯)'};
-  const w=isWeapon(id), d=itemDesc(id);
-  let h = w ? '<span class="ts">TS:'+itemTS(id)+' SS:'+itemSS(id)+'</span>' : '';
-  h += d ? escA(d) : (w ? '' : '(설명 없음)');
-  return {empty:false, html:h};
-}
-function equipField(label,off){   // 장비 슬롯: 라벨 + 드롭다운 + 우측 상시 설명
-  const v=u16(off), e=edescHtml(v);
-  return '<div class="fld efld">'+
-    '<label>'+label+'</label>'+
-    '<select data-off="'+off+'" data-size="2" data-kind="sel" data-item="1" title="'+escA(itemTip(v))+'">'+opt("Item",v,true)+'</select>'+
-    '<div class="edesc'+(e.empty?' empty':'')+'">'+e.html+'</div>'+
-  '</div>';
-}
 function renderEdit(){
   if(cur<0)return;
   const off=records[cur];
@@ -298,11 +279,11 @@ function renderEdit(){
     '<div class="combo-grid">'+statg+'</div>'+
   '</div>'+
   '<div class="grp"><h3>장비 <span class="tag ok">확정</span></h3>'+
-    equipField("무기 1",off+F.weap1)+
-    equipField("무기 2",off+F.weap2)+
-    equipField("방어구",off+F.armor)+
-    equipField("장신구 1",off+F.acc1)+
-    equipField("장신구 2",off+F.acc2)+
+    selField("무기 1",off+F.weap1,"Item",2)+
+    selField("무기 2",off+F.weap2,"Item",2)+
+    selField("방어구",off+F.armor,"Item",2)+
+    selField("장신구 1",off+F.acc1,"Item",2)+
+    selField("장신구 2",off+F.acc2,"Item",2)+
   '</div>'+
   '<div class="grp"><h3>어빌리티 <span class="tag ok">확정</span></h3>'+
     '<p class="hint">보유 어빌리티와 레벨. 레벨을 0으로 두면 미보유 처리됩니다. 최대 레벨은 Abi.dat에서 추출(어빌리티별 상이). 예: 연계기 23~31은 최대 5.</p>'+
@@ -313,14 +294,7 @@ function renderEdit(){
     '<details><summary>16비트 값 그리드 (직접 편집)</summary>'+raw+'</details>'+
     '<details><summary>HEX 덤프 (읽기전용, 340바이트)</summary><div class="hex">'+hex+'</div></details>'+
   '</div>';
-  e.querySelectorAll('[data-off]').forEach(el=>el.addEventListener('change',()=>{
-    applyField(el);
-    if(el.dataset.item){
-      const id=+el.value; el.title=itemTip(id);
-      const box=el.closest('.fld'), ed=box&&box.querySelector('.edesc');
-      if(ed){ const r=edescHtml(id); ed.className='edesc'+(r.empty?' empty':''); ed.innerHTML=r.html; }
-    }
-  }));
+  e.querySelectorAll('[data-off]').forEach(el=>el.addEventListener('change',()=>{ applyField(el); if(el.dataset.item) el.title=itemTip(+el.value); }));
   e.querySelectorAll('[data-abil]').forEach(el=>el.addEventListener('change',()=>{
     const id=+el.dataset.abil, mx=abilMax(id);
     let v=parseInt(el.value,10); if(isNaN(v)||v<0)v=0; if(v>mx){v=mx; el.value=mx;}
