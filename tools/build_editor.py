@@ -97,6 +97,20 @@ HTML = r'''<!DOCTYPE html>
   .invrow{display:grid;grid-template-columns:1fr 90px 32px;gap:8px;margin-bottom:5px}
   .invrow .del{background:#3a2326;border-color:#5a3338}
   .smallbtn{font-size:12px;padding:3px 8px}
+  /* 커스텀 아이템 드롭다운 */
+  .isel{position:relative}
+  .isel-cur{display:flex;gap:8px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:5px 8px;cursor:pointer;min-height:31px;overflow:hidden}
+  .isel-cur:hover{border-color:var(--acc)}
+  .in{color:var(--acc);font-weight:700;white-space:nowrap}
+  .iw{color:var(--warn);font-size:12px;white-space:nowrap}
+  .isel-cur .im{color:var(--mut);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .isel-arr{margin-left:auto;color:var(--mut);font-size:11px}
+  .isel-menu{position:fixed;z-index:100;background:var(--panel);border:1px solid var(--acc);border-radius:6px;overflow:auto;box-shadow:0 8px 22px rgba(0,0,0,.55)}
+  .isel-q{position:sticky;top:0;width:100%;padding:7px 9px;border:0;border-bottom:1px solid var(--line);background:var(--panel2);color:var(--fg)}
+  .iopt{padding:6px 9px;cursor:pointer;border-bottom:1px solid #2c303a;line-height:1.45}
+  .iopt:hover{background:#33405e}
+  .iopt .iw{margin-left:6px}
+  .iopt .im{color:var(--mut);font-size:12px;margin-left:6px}
 </style>
 </head>
 <body>
@@ -226,6 +240,35 @@ function opt(table,val,desc){
   s+=Object.keys(t).map(Number).sort((a,b)=>a-b).map(k=>'<option value="'+k+'">'+lab(k)+'</option>').join("");
   return s;
 }
+// ===== 커스텀 아이템 드롭다운 (이름 강조 + 설명/TS·SS, 검색) — 네이티브 option은 부분 스타일 불가 =====
+function itemName(id){ const t=TABLES.Item||{}; return t[id]!==undefined? t[id] : '(?)'; }
+function itemNameHtml(id,withId){ return '<b class="in">'+(withId?id+' ':'')+escA(itemName(id))+'</b>'; }
+function itemMetaHtml(id){
+  let h=''; if(isWeapon(id)) h+='<span class="iw">TS:'+itemTS(id)+' SS:'+itemSS(id)+'</span>';
+  const d=itemDesc(id); if(d) h+='<span class="im">'+escA(d)+'</span>'; return h;
+}
+function curHtml(id){ return itemNameHtml(id,false)+itemMetaHtml(id)+'<span class="isel-arr">▾</span>'; }
+function itemSelHtml(attrs,val){   // attrs: 컨텍스트 식별(data-ioff="…" 또는 data-ginv="…" data-rinv="…")
+  return '<div class="isel" '+attrs+' data-val="'+val+'">'+
+    '<div class="isel-cur">'+curHtml(val)+'</div>'+
+    '<div class="isel-menu" hidden><input class="isel-q" placeholder="이름/설명 검색…" autocomplete="off"><div class="isel-list"></div></div>'+
+  '</div>';
+}
+function itemListHtml(){
+  return Object.keys(TABLES.Item||{}).map(Number).sort((a,b)=>a-b)
+    .map(id=>'<div class="iopt" data-v="'+id+'">'+itemNameHtml(id,true)+itemMetaHtml(id)+'</div>').join('');
+}
+function closeItemMenus(){ document.querySelectorAll('.isel-menu').forEach(m=>m.hidden=true); }
+function filterItemMenu(isel){ const q=isel.querySelector('.isel-q').value.toLowerCase();
+  isel.querySelectorAll('.iopt').forEach(o=>{ o.style.display=(!q||o.textContent.toLowerCase().includes(q))?'':'none'; }); }
+function pickItem(isel,id){
+  isel.dataset.val=id;
+  isel.querySelector('.isel-cur').innerHTML=curHtml(id);
+  if(isel.dataset.ioff!==undefined){ const off=+isel.dataset.ioff, rel=off-records[cur]; for(const t of editTargets()) setu16(t+rel,id); }
+  else if(isel.dataset.ginv!==undefined){ const g=invGroups[+isel.dataset.ginv]; g.items[+isel.dataset.rinv].id=id; writeGroup(g); }
+  closeItemMenus();
+}
+function itemField(label,off){ return '<div class="fld"><label>'+label+'</label>'+itemSelHtml('data-ioff="'+off+'"',u16(off))+'</div>'; }
 function selField(label,off,table,size){
   const v= size===1? buf[off] : u16(off);
   const isItem = table==="Item";
@@ -289,11 +332,11 @@ function renderEdit(){
     '<div class="combo-grid">'+statg+'</div>'+
   '</div>'+
   '<div class="grp"><h3>장비 <span class="tag ok">확정</span></h3>'+
-    selField("무기 1",off+F.weap1,"Item",2)+
-    selField("무기 2",off+F.weap2,"Item",2)+
-    selField("방어구",off+F.armor,"Item",2)+
-    selField("장신구 1",off+F.acc1,"Item",2)+
-    selField("장신구 2",off+F.acc2,"Item",2)+
+    itemField("무기 1",off+F.weap1)+
+    itemField("무기 2",off+F.weap2)+
+    itemField("방어구",off+F.armor)+
+    itemField("장신구 1",off+F.acc1)+
+    itemField("장신구 2",off+F.acc2)+
   '</div>'+
   '<div class="grp"><h3>어빌리티 <span class="tag ok">확정</span></h3>'+
     '<p class="hint">보유 어빌리티와 레벨. 레벨을 0으로 두면 미보유 처리됩니다. 최대 레벨은 Abi.dat에서 추출(어빌리티별 상이). 예: 연계기 23~31은 최대 5.</p>'+
@@ -435,7 +478,7 @@ function invBoxHtml(g,gi){
   const loc=g.members.map(o=>'0x'+o.toString(16)).join(', ');
   const rows=g.items.map((it,ri)=>
     '<div class="invrow">'+
-     '<select data-g="'+gi+'" data-r="'+ri+'" data-k="id" title="'+escA(itemTip(it.id))+'">'+opt("Item",it.id,true)+'</select>'+
+     itemSelHtml('data-ginv="'+gi+'" data-rinv="'+ri+'"', it.id)+
      '<input type="number" min="0" max="999" data-g="'+gi+'" data-r="'+ri+'" data-k="qty" value="'+it.qty+'">'+
      '<button class="del smallbtn" data-g="'+gi+'" data-del="'+ri+'">✕</button>'+
     '</div>').join("");
@@ -552,6 +595,30 @@ document.querySelectorAll('#dictcats .catbtn').forEach(b=>b.onclick=()=>{
   renderDict(document.getElementById('dictsearch').value.toLowerCase());
 });
 document.getElementById('search').oninput=e=>renderList(e.target.value.toLowerCase());
+// 커스텀 아이템 드롭다운: 열기/선택/검색/바깥클릭·스크롤 닫기 (이벤트 위임)
+document.addEventListener('click',e=>{
+  const c=e.target.closest('.isel-cur');
+  if(c){ const isel=c.closest('.isel'), menu=isel.querySelector('.isel-menu'), wasOpen=!menu.hidden;
+    closeItemMenus();
+    if(!wasOpen){
+      const list=isel.querySelector('.isel-list'); if(!list.dataset.built){ list.innerHTML=itemListHtml(); list.dataset.built='1'; }
+      const r=c.getBoundingClientRect();
+      menu.style.left=r.left+'px';
+      menu.style.width=Math.min(Math.max(r.width,380), window.innerWidth-r.left-10)+'px';
+      menu.style.top=(r.bottom+2)+'px';
+      menu.style.maxHeight=Math.max(160, window.innerHeight-r.bottom-14)+'px';
+      menu.hidden=false;
+      const q=isel.querySelector('.isel-q'); q.value=''; filterItemMenu(isel); q.focus();
+      const sel=isel.querySelector('.iopt[data-v="'+isel.dataset.val+'"]'); if(sel) sel.scrollIntoView({block:'nearest'});
+    }
+    return;
+  }
+  const op=e.target.closest('.iopt'); if(op){ pickItem(op.closest('.isel'), +op.dataset.v); return; }
+  if(!e.target.closest('.isel')) closeItemMenus();
+});
+document.addEventListener('input',e=>{ if(e.target.classList&&e.target.classList.contains('isel-q')) filterItemMenu(e.target.closest('.isel')); });
+window.addEventListener('scroll',closeItemMenus,true);
+window.addEventListener('resize',closeItemMenus);
 const drop=document.getElementById('drop');
 ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hl');}));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('hl');}));
