@@ -228,7 +228,7 @@ TAIL   ┘  (0x37198 ~ EOF) : 마커 74391010 영역(파티 인덱스 등) + 끝
   - **소지금**: 현재 에피소드 표시값만 전면, 나머지는 "기타 소지금 ⚠️" 펼치기.
   - **보관함**: 현재 에피소드 = ✅ 안전 편집 영역, 그 외 = ⚠️ 위험 영역(접힘, 펼쳐야 접근, 경고문). 아이템 추가/삭제/종류·수량 변경.
   - **아이템 사전(📖)**: `ITEM_INFO`(Item.dat 추출) 기반 검색(이름/영문/설명/번호) + 분류 필터 + 무기 TS/SS.
-  - **아이템 드롭다운(커스텀)**: 장비·보관함의 아이템 선택은 네이티브 `<select>` 대신 **커스텀 드롭다운**(`itemSelHtml`/`itemField`/`pickItem`). 네이티브 option은 부분 스타일이 불가하므로, 행마다 **이름 굵게+강조색(`.in`)** + TS/SS(`.iw`) + 설명(`.im`)을 표시하고 검색 가능. 메뉴는 `position:fixed`로 좌표 계산(스크롤 컨테이너 클리핑 회피), 스크롤/리사이즈/바깥클릭 시 닫힘. 컨텍스트는 `data-ioff`(장비) 또는 `data-ginv/data-rinv`(보관함). 선택 시 장비=editTargets에 u16 기록, 보관함=writeGroup.
+  - **아이템 드롭다운(커스텀)**: 장비·보관함의 아이템 선택은 네이티브 `<select>` 대신 **커스텀 드롭다운**(`itemSelHtml`/`itemField`/`pickItem`). 네이티브 option은 부분 스타일이 불가하므로, 행마다 **이름 굵게+강조색(`.in`)** + TS/SS(`.iw`) + 설명(`.im`)을 표시하고 검색 가능. 메뉴는 `position:fixed`로 좌표 계산(스크롤 컨테이너 클리핑 회피), **바깥** 스크롤/리사이즈/바깥클릭 시 닫힘(메뉴 내부 스크롤은 유지 — scroll 핸들러가 `e.target.closest('.isel-menu')`면 무시; 열 때 `focus({preventScroll:true})`). 컨텍스트는 `data-ioff`(장비) 또는 `data-ginv/data-rinv`(보관함). 선택 시 장비=editTargets에 u16 기록, 보관함=writeGroup.
   - **저장**: XOR 재인코딩 + **체크섬 재계산** → `..._edited.sav` 다운로드.
 - 핵심 상수: `GOLD`(슬롯/에피소드 매핑), `EPISODES`, `STATIC_SIG`, `ITEM_INFO`(아이템 사전), 레코드 필드 오프셋 `F{}`.
 

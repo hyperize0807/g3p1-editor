@@ -598,7 +598,7 @@ document.addEventListener('click',e=>{
       menu.style.top=(r.bottom+2)+'px';
       menu.style.maxHeight=Math.max(160, window.innerHeight-r.bottom-14)+'px';
       menu.hidden=false;
-      const q=isel.querySelector('.isel-q'); q.value=''; filterItemMenu(isel); q.focus();
+      const q=isel.querySelector('.isel-q'); q.value=''; filterItemMenu(isel); q.focus({preventScroll:true});
       const sel=isel.querySelector('.iopt[data-v="'+isel.dataset.val+'"]'); if(sel) sel.scrollIntoView({block:'nearest'});
     }
     return;
@@ -607,7 +607,8 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.isel')) closeItemMenus();
 });
 document.addEventListener('input',e=>{ if(e.target.classList&&e.target.classList.contains('isel-q')) filterItemMenu(e.target.closest('.isel')); });
-window.addEventListener('scroll',closeItemMenus,true);
+// 메뉴 내부 스크롤은 무시(목록 스크롤 가능), 바깥(페이지/패널) 스크롤 시에만 닫기
+window.addEventListener('scroll',e=>{ const t=e.target; if(t&&t.closest&&t.closest('.isel-menu')) return; closeItemMenus(); },true);
 window.addEventListener('resize',closeItemMenus);
 const drop=document.getElementById('drop');
 ['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('hl');}));
