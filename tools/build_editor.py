@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 # 에디터 빌더: tools/tables.json + tools/abil_max.json 을 index.html(dist/)에 내장하여 생성.
 import json, os
+VERSION = "0.9.0"                                            # 에디터 버전(게임 버전 1.03+/1.04와 무관). 릴리스 태그 vX.Y.Z 와 일치시킬 것.
 PROJ = os.path.dirname(os.path.abspath(__file__))            # tools/
 ROOT = os.path.dirname(PROJ)                                  # 저장소 루트
 DIST = os.path.join(ROOT, 'dist'); os.makedirs(DIST, exist_ok=True)
@@ -13,7 +14,7 @@ HTML = r'''<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>창세기전3 파트1 세이브 에디터 (MVP)</title>
+<title>창세기전3 파트1 세이브 에디터 v__VERSION__ (Beta)</title>
 <style>
   :root{--bg:#1a1c22;--panel:#23262e;--panel2:#2b2f3a;--line:#3a3f4b;--fg:#e6e8ee;--mut:#9aa0ad;--acc:#6ea8fe;--ok:#5ed18b;--warn:#e6b65c}
   *{box-sizing:border-box}
@@ -115,7 +116,7 @@ HTML = r'''<!DOCTYPE html>
 </head>
 <body>
 <header>
-  <h1>창세기전3 파트1 세이브 에디터</h1><span class="badge">MVP</span>
+  <h1>창세기전3 파트1 세이브 에디터</h1><span class="badge" style="background:var(--acc)">Beta</span><span class="hint">v__VERSION__</span>
   <input type="file" id="file" accept=".sav" style="display:none">
   <button id="open">📂 .sav 열기</button>
   <button id="invbtn" disabled>🎒 보관함 편집</button>
@@ -677,7 +678,7 @@ drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f){fileName=
 </body>
 </html>'''
 
-HTML = HTML.replace("__TABLES__", tables).replace("__ABILMAX__", abil_max).replace("__ITEMINFO__", item_info)
+HTML = HTML.replace("__TABLES__", tables).replace("__ABILMAX__", abil_max).replace("__ITEMINFO__", item_info).replace("__VERSION__", VERSION)
 out = os.path.join(DIST, 'index.html')
 open(out, 'w', encoding='utf-8').write(HTML)
 print("written:", out, len(HTML), "bytes")

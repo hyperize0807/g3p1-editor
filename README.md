@@ -7,11 +7,14 @@
 
 ## 빠른 시작
 
-1. [`dist/index.html`](dist/index.html) 을 내려받아 브라우저로 엽니다.
-2. `.sav` 파일을 열고 → 편집 → **저장(다운로드)**.
+1. **[최신 릴리스](https://github.com/hyperize0807/g3p1-editor/releases/latest)** 에서 `index.html` 을 내려받습니다. (또는 저장소의 [`dist/index.html`](dist/index.html))
+2. 브라우저(크롬/엣지 등)로 열고 → `.sav` 파일을 열어 → 편집 → **저장(다운로드)**.
 3. 자세한 사용법은 **[사용자 가이드](dist/USER_GUIDE.md)** 참고.
 
 > ⚠️ 편집 전 **세이브 파일을 반드시 백업**하세요.
+> 🔢 게임 **1.03+ / 1.04** 버전 세이브를 지원합니다(로드 시 자동 감지).
+
+버전별 변경점은 **[CHANGELOG.md](CHANGELOG.md)** 를 참고하세요. 안정판은 항상 [Releases](https://github.com/hyperize0807/g3p1-editor/releases) 에서 받는 것을 권장합니다.
 
 ## 기능
 
