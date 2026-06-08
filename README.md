@@ -23,6 +23,7 @@
 - 🧑 캐릭터: 식별정보 / 능력치(HP·EXP·STR~WTP) / 장비 / **어빌리티(최대 레벨 자동 적용)**
 - 🎒 보관함: 현재 에피소드는 안전 편집, 그 외는 "위험 영역"으로 분리
 - 📖 아이템 사전: 이름(한/영)·설명 검색 + 분류 필터(무기/써크렛/방어구/장신구/소비) + 무기 TS/SS 공격스탯
+- 📜 직업 사전: 나라·세력별 직업 트리(전직 조건/습득 어빌리티·최대레벨) + 검색·나라필터 + 최단 전직 루트 가이드
 - 아이템 드롭다운(장비·보관함): 커스텀 드롭다운으로 이름 강조(굵게/색) + 설명 + 무기 TS/SS + 검색, 펼쳐서 비교·선택
 - 중복 없는 캐릭터 목록 + 모든 에피소드 블록 일괄 적용
 - 저장 시 변조방지 체크섬 자동 재계산
@@ -36,15 +37,18 @@ dist/        배포물 (최종 사용자용)
 docs/
   SAVE_FORMAT.md 세이브 파일 포맷 명세 (역분석 결과)
 tools/        유지보수/빌드용
-  build_editor.py   index.html 빌드 (tables.json + abil_max.json + item_info.json 내장)
+  build_editor.py   index.html 빌드 (tables.json + abil_max.json + item_info.json + jobs.json 내장)
   gen_tables.py     G3Data/*.txt → tables.json
   abimax2.py        Abi.dat → abil_max.json (어빌리티 최대 레벨)
   gen_itemdat.py    Item.dat → item_info.json (아이템 이름/설명)
+  job_extract.py    나무위키 저장 HTML → samples/job/extracted.txt (직업 문서 텍스트)
+  gen_jobs.py       extracted.txt → jobs.json (직업 트리/전직조건/습득어빌)
   tables.json       이름 테이블(아이템/캐릭터/직업 등)
   abil_max.json     어빌리티별 최대 레벨
   item_info.json    아이템 이름(한/영)·설명
+  jobs.json         직업 사전(나라/세력/전직조건/습득어빌, 나무위키 출처)
   G3Data/           게임에서 추출한 이름 테이블 원본(CP949)
-samples/      (git 제외) 테스트용 세이브, 원본 SaveEdit.exe
+samples/      (git 제외) 테스트용 세이브, 원본 SaveEdit.exe, 나무위키 저장본
 ```
 
 ## 빌드 (개발자용)
@@ -61,6 +65,13 @@ python tools/build_editor.py        # tools/*.json 을 index.html(dist/)에 내�
 python tools/gen_tables.py          # G3Data/*.txt -> tools/tables.json
 python tools/abimax2.py             # <게임>/dats/Abi.dat -> tools/abil_max.json
 python tools/gen_itemdat.py         # <게임>/dats/Item.dat -> tools/item_info.json
+```
+
+직업 사전 데이터(나무위키 「창세기전 3/직업」 저장 HTML 필요):
+
+```sh
+python tools/job_extract.py         # 저장 HTML -> samples/job/extracted.txt
+python tools/gen_jobs.py            # extracted.txt -> tools/jobs.json (tables.json 로 ID 매핑)
 ```
 
 ## 포맷 명세

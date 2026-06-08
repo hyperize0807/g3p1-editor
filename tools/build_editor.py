@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 # 에디터 빌더: tools/tables.json + tools/abil_max.json 을 index.html(dist/)에 내장하여 생성.
 import json, os
-VERSION = "0.9.1"                                            # 에디터 버전(게임 버전 1.03+/1.04와 무관). 릴리스 태그 vX.Y.Z 와 일치시킬 것.
+VERSION = "0.10.0"                                           # 에디터 버전(게임 버전 1.03+/1.04와 무관). 릴리스 태그 vX.Y.Z 와 일치시킬 것.
 PROJ = os.path.dirname(os.path.abspath(__file__))            # tools/
 ROOT = os.path.dirname(PROJ)                                  # 저장소 루트
 DIST = os.path.join(ROOT, 'dist'); os.makedirs(DIST, exist_ok=True)
 tables = open(os.path.join(PROJ, 'tables.json'), encoding='utf-8').read()
 abil_max = open(os.path.join(PROJ, 'abil_max.json'), encoding='utf-8').read()
 item_info = open(os.path.join(PROJ, 'item_info.json'), encoding='utf-8').read()
+jobs = open(os.path.join(PROJ, 'jobs.json'), encoding='utf-8').read()
 
 HTML = r'''<!DOCTYPE html>
 <html lang="ko">
@@ -69,10 +70,30 @@ HTML = r'''<!DOCTYPE html>
   .hex{font-family:Consolas,monospace;font-size:11px;color:var(--mut);white-space:pre;overflow:auto;background:#181a1f;padding:8px;border-radius:6px}
   .hint{color:var(--mut);font-size:12px}
   .applyall{display:flex;gap:6px;align-items:center;color:var(--mut);font-size:12px}
-  #modal,#dictmodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;align-items:flex-start;justify-content:center}
-  #modal .box,#dictmodal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:40px;width:760px;max-width:94vw;max-height:86vh;overflow:auto;padding:18px 22px}
-  #modal h2,#dictmodal h2{margin:0 0 4px;font-size:16px}
-  #dictsearch{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--fg);margin-bottom:6px;position:sticky;top:0}
+  #modal,#dictmodal,#jobmodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;align-items:flex-start;justify-content:center}
+  #modal .box,#dictmodal .box,#jobmodal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:40px;width:760px;max-width:94vw;max-height:86vh;overflow:auto;padding:18px 22px}
+  #modal h2,#dictmodal h2,#jobmodal h2{margin:0 0 4px;font-size:16px}
+  #dictsearch,#jobsearch{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--fg);margin-bottom:6px;position:sticky;top:0}
+  /* 직업 사전 */
+  #jobcountries{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
+  .jcountry{color:var(--acc);font-size:15px;font-weight:700;margin:16px 0 4px;border-bottom:2px solid var(--line);padding-bottom:3px}
+  .jfaction{color:var(--ok);font-size:13px;font-weight:600;margin:12px 0 4px}
+  .jobcard{border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:6px 0;background:var(--panel2)}
+  .jobcard .jn{font-weight:700}
+  .jobcard .jid{color:#666;font-size:11px;margin-left:6px}
+  .jcond,.jlearn{font-size:12px;margin-top:4px;line-height:1.9}
+  .jcond .lbl,.jlearn .lbl{color:var(--mut);margin-right:6px;font-size:11px}
+  .atoken{display:inline-block;margin:0 5px 0 0;white-space:nowrap}
+  .jcond .atoken{color:var(--warn)}
+  .jlearn .atoken{color:var(--acc)}
+  .jrm{color:var(--mut);font-size:10px;margin-left:2px}
+  .jnone{color:#666;font-size:12px}
+  .jguide{border:1px solid #3a4a6b;background:#1b2233;border-radius:6px;margin:6px 0}
+  .jguide>summary{cursor:pointer;color:var(--acc);padding:7px 10px;font-size:12px;font-weight:600;list-style:none}
+  .jguide>summary::-webkit-details-marker{display:none}
+  .jguide>summary:before{content:'🧭 ▸ '}
+  .jguide[open]>summary:before{content:'🧭 ▾ '}
+  .jguide p{margin:0 10px 10px;font-size:12px;color:#c9d4e6;line-height:1.75}
   .dictrow{padding:7px 4px;border-bottom:1px solid #2c303a}
   .dictrow .dn{font-weight:600}
   .dictrow .de{color:var(--mut);font-size:11px;margin-left:6px}
@@ -121,6 +142,7 @@ HTML = r'''<!DOCTYPE html>
   <button id="open">📂 .sav 열기</button>
   <button id="invbtn" disabled>🎒 보관함 편집</button>
   <button id="dictbtn">📖 아이템 사전</button>
+  <button id="jobbtn">📜 직업 사전</button>
   <label id="saververap" class="hint" style="display:none">저장 버전 <select id="savever" style="width:auto;padding:3px 6px"><option value="1.03+">1.03+</option><option value="1.04">1.04</option></select></label>
   <button id="save" class="primary" disabled>💾 저장(다운로드)</button>
   <span id="fname" class="hint"></span>
@@ -152,6 +174,20 @@ HTML = r'''<!DOCTYPE html>
   <div id="dictlist"></div>
   <div style="text-align:right;margin-top:12px"><button id="dictclose" class="primary">닫기</button></div>
 </div></div>
+<div id="jobmodal"><div class="box">
+  <h2>📜 직업 사전</h2>
+  <p class="hint">나라·세력별 직업 트리입니다. 각 직업의 <b>전직 조건</b>(필요 어빌리티·레벨)과 <b>습득 가능 어빌리티</b>(최대 레벨, 일부는 최단 루트 최소레벨 표기)를 보여줍니다. 검색은 직업명·세력·어빌리티명으로 됩니다. 일부 세력은 <b>최단 전직 루트 가이드</b>를 제공합니다.</p>
+  <input id="jobsearch" placeholder="검색…" autocomplete="off">
+  <div id="jobcountries">
+    <button data-c="" class="catbtn on">전체</button>
+    <button data-c="투르" class="catbtn">투르</button>
+    <button data-c="팬드래건 왕국" class="catbtn">팬드래건 왕국</button>
+    <button data-c="게이시르 제국" class="catbtn">게이시르 제국</button>
+    <button data-c="한 제국" class="catbtn">한 제국</button>
+  </div>
+  <div id="joblist"></div>
+  <div style="text-align:right;margin-top:12px"><button id="jobclose" class="primary">닫기</button></div>
+</div></div>
 <main>
   <div id="list"><input id="search" placeholder="이름/번호 검색…"><div id="rows"></div></div>
   <div id="edit"><p class="hint">왼쪽에서 캐릭터를 선택하세요.</p></div>
@@ -162,6 +198,7 @@ const TABLES = __TABLES__;
 const ABIL_MAX = __ABILMAX__;   // 어빌리티별 최대 레벨 (Abi.dat record+0x20). 없으면 기본 9.
 const abilMax = id => (ABIL_MAX[id] || 9);
 const ITEM_INFO = __ITEMINFO__; // 아이템 사전: id -> {eng, cat, desc?, ts?, ss?} (Item.dat). 이름은 TABLES.Item 사용.
+const JOBS = __JOBS__;          // 직업 사전: {countries:[], jobs:[{name,country,faction,jobId,require:[{name,lv,abilId}],learn:[{name,max,routeMin,abilId}]}], guides:{}}
 const itemDesc = id => { const v=ITEM_INFO[id]; return v && v.desc ? v.desc : ''; };
 const itemCat  = id => { const v=ITEM_INFO[id]; return v && v.cat ? v.cat : '기타'; };
 const itemTS   = id => { const v=ITEM_INFO[id]; return v ? (v.ts||0) : 0; };
@@ -602,6 +639,52 @@ function renderDict(filter=""){
   }
   wrap.innerHTML = html || '<p class="hint">검색 결과가 없습니다.</p>';
 }
+// ===== 직업 사전 =====
+let jobCountry="";   // 나라 필터(빈값=전체)
+function abilName(id,raw){ return (id!=null && TABLES.Abil && TABLES.Abil[id]) ? TABLES.Abil[id] : raw; }
+function jobTokenHtml(t,isReq){
+  const nm=escA(abilName(t.abilId,t.name));
+  const lv=isReq ? (t.lv?(' '+t.lv):'') : (t.max?(' '+t.max):'');
+  const rm=(!isReq && t.routeMin)?'<span class="jrm">(루트'+t.routeMin+')</span>':'';
+  return '<span class="atoken">'+nm+lv+rm+'</span>';
+}
+function jobCardHtml(j){
+  const cond=j.require.length? j.require.map(t=>jobTokenHtml(t,true)).join('') : '<span class="jnone">없음 / 즉시 전직</span>';
+  const learn=j.learn.length? j.learn.map(t=>jobTokenHtml(t,false)).join('') : '<span class="jnone">-</span>';
+  return '<div class="jobcard"><div><span class="jn">'+escA(j.name)+'</span>'+
+    (j.jobId!=null?'<span class="jid">#'+j.jobId+'</span>':'<span class="jid">(미연결)</span>')+'</div>'+
+    '<div class="jcond"><span class="lbl">전직조건</span>'+cond+'</div>'+
+    '<div class="jlearn"><span class="lbl">습득</span>'+learn+'</div></div>';
+}
+function renderJobDict(filter=""){
+  const wrap=document.getElementById('joblist'); const f=(filter||'').trim().toLowerCase();
+  let html='';
+  for(const country of JOBS.countries){
+    if(jobCountry && country!==jobCountry) continue;
+    const inC=JOBS.jobs.filter(j=>j.country===country);
+    const facOrder=[], byFac={};
+    for(const j of inC){ if(!(j.faction in byFac)){byFac[j.faction]=[];facOrder.push(j.faction);} byFac[j.faction].push(j); }
+    let cHtml='';
+    for(const fac of facOrder){
+      let fHtml='';
+      for(const j of byFac[fac]){
+        const hay=(j.name+' '+(j.faction||'')+' '+j.country+' '+
+          j.require.map(t=>abilName(t.abilId,t.name)+' '+t.name).join(' ')+' '+
+          j.learn.map(t=>abilName(t.abilId,t.name)+' '+t.name).join(' ')).toLowerCase();
+        if(f && !hay.includes(f)) continue;
+        fHtml+=jobCardHtml(j);
+      }
+      if(fHtml){
+        cHtml+='<div class="jfaction">'+escA(fac||'')+'</div>';
+        const guide=JOBS.guides&&JOBS.guides[fac];
+        if(guide && !f) cHtml+='<details class="jguide"><summary>최단 전직 루트 가이드</summary><p>'+escA(guide)+'</p></details>';
+        cHtml+=fHtml;
+      }
+    }
+    if(cHtml) html+='<div class="jcountry">'+escA(country)+'</div>'+cHtml;
+  }
+  wrap.innerHTML = html || '<p class="hint">검색 결과가 없습니다.</p>';
+}
 function loadBuf(arr){
   const raw=new Uint8Array(arr);
   const ver=detectVersion(raw);
@@ -666,6 +749,15 @@ document.querySelectorAll('#dictcats .catbtn').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#dictcats .catbtn').forEach(x=>x.classList.toggle('on',x===b));
   renderDict(document.getElementById('dictsearch').value.toLowerCase());
 });
+document.getElementById('jobbtn').onclick=()=>{renderJobDict(document.getElementById('jobsearch').value.toLowerCase());document.getElementById('jobmodal').style.display='flex';};
+document.getElementById('jobclose').onclick=()=>document.getElementById('jobmodal').style.display='none';
+document.getElementById('jobmodal').onclick=e=>{if(e.target.id==='jobmodal')document.getElementById('jobmodal').style.display='none';};
+document.getElementById('jobsearch').oninput=e=>renderJobDict(e.target.value.toLowerCase());
+document.querySelectorAll('#jobcountries .catbtn').forEach(b=>b.onclick=()=>{
+  jobCountry=b.dataset.c;
+  document.querySelectorAll('#jobcountries .catbtn').forEach(x=>x.classList.toggle('on',x===b));
+  renderJobDict(document.getElementById('jobsearch').value.toLowerCase());
+});
 document.getElementById('search').oninput=e=>renderList(e.target.value.toLowerCase());
 // 커스텀 아이템 드롭다운: 열기/선택/검색/바깥클릭·스크롤 닫기 (이벤트 위임)
 document.addEventListener('click',e=>{
@@ -700,7 +792,7 @@ drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f){fileName=
 </body>
 </html>'''
 
-HTML = HTML.replace("__TABLES__", tables).replace("__ABILMAX__", abil_max).replace("__ITEMINFO__", item_info).replace("__VERSION__", VERSION)
+HTML = HTML.replace("__TABLES__", tables).replace("__ABILMAX__", abil_max).replace("__ITEMINFO__", item_info).replace("__JOBS__", jobs).replace("__VERSION__", VERSION)
 out = os.path.join(DIST, 'index.html')
 open(out, 'w', encoding='utf-8').write(HTML)
 print("written:", out, len(HTML), "bytes")
