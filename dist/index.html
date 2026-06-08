@@ -164,7 +164,7 @@
 </div></div>
 <div id="jobmodal"><div class="box">
   <h2>📜 직업 사전</h2>
-  <p class="hint">나라·세력별 직업 트리입니다. 각 직업의 <b>전직 조건</b>(필요 어빌리티·레벨)과 <b>습득 가능 어빌리티</b>(최대 레벨, 일부는 최단 루트 최소레벨 표기)를 보여줍니다. 검색은 직업명·세력·어빌리티명으로 됩니다. 일부 세력은 <b>최단 전직 루트 가이드</b>를 제공합니다.</p>
+  <p class="hint">나라·세력별 직업 트리입니다. 각 직업의 <b>전직 조건</b>(필요 어빌리티·레벨)과 <b>습득 가능 어빌리티</b>(최대 레벨)를 보여줍니다. 검색은 직업명·세력·어빌리티명으로 됩니다. 일부 세력은 <b>최단 전직 루트 가이드</b>를 제공합니다.</p>
   <input id="jobsearch" placeholder="검색…" autocomplete="off">
   <div id="jobcountries">
     <button data-c="" class="catbtn on">전체</button>
@@ -8248,8 +8248,7 @@ function abilName(id,raw){ return (id!=null && TABLES.Abil && TABLES.Abil[id]) ?
 function jobTokenHtml(t,isReq){
   const nm=escA(abilName(t.abilId,t.name));
   const lv=isReq ? (t.lv?(' '+t.lv):'') : (t.max?(' '+t.max):'');
-  const rm=(!isReq && t.routeMin)?'<span class="jrm">(루트'+t.routeMin+')</span>':'';
-  return '<span class="atoken">'+nm+lv+rm+'</span>';
+  return '<span class="atoken">'+nm+lv+'</span>';
 }
 function jobCardHtml(j){
   const cond=j.require.length? j.require.map(t=>jobTokenHtml(t,true)).join('') : '<span class="jnone">없음 / 즉시 전직</span>';
@@ -8257,7 +8256,7 @@ function jobCardHtml(j){
   return '<div class="jobcard"><div><span class="jn">'+escA(j.name)+'</span>'+
     (j.jobId!=null?'<span class="jid">#'+j.jobId+'</span>':'<span class="jid">(미연결)</span>')+'</div>'+
     '<div class="jcond"><span class="lbl">전직조건</span>'+cond+'</div>'+
-    '<div class="jlearn"><span class="lbl">습득</span>'+learn+'</div></div>';
+    '<div class="jlearn"><span class="lbl">습득 가능 어빌리티</span>'+learn+'</div></div>';
 }
 function renderJobDict(filter=""){
   const wrap=document.getElementById('joblist'); const f=(filter||'').trim().toLowerCase();
