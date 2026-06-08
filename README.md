@@ -23,7 +23,7 @@
 - 🧑 캐릭터: 식별정보 / 능력치(HP·EXP·STR~WTP) / 장비 / **어빌리티(최대 레벨 자동 적용)**
 - 🎒 보관함: 현재 에피소드는 안전 편집, 그 외는 "위험 영역"으로 분리
 - 📖 아이템 사전: 이름(한/영)·설명 검색 + 분류 필터(무기/써크렛/방어구/장신구/소비) + 무기 TS/SS 공격스탯
-- 📜 직업 사전: 나라·세력별 직업 트리(전직 조건/습득 어빌리티·최대레벨) + 검색·나라필터 + 최단 전직 루트 가이드
+- 📜 직업 사전: 나라·세력별 직업 트리(전직 조건/습득 어빌리티·최대레벨) + 검색·나라필터
 - 아이템 드롭다운(장비·보관함): 커스텀 드롭다운으로 이름 강조(굵게/색) + 설명 + 무기 TS/SS + 검색, 펼쳐서 비교·선택
 - 중복 없는 캐릭터 목록 + 모든 에피소드 블록 일괄 적용
 - 저장 시 변조방지 체크섬 자동 재계산
@@ -43,10 +43,12 @@ tools/        유지보수/빌드용
   gen_itemdat.py    Item.dat → item_info.json (아이템 이름/설명)
   job_extract.py    나무위키 저장 HTML → samples/job/extracted.txt (직업 문서 텍스트)
   gen_jobs.py       extracted.txt → jobs.json (직업 트리/전직조건/습득어빌)
+  gen_jobguide.py   주요캐릭터 전직공략.txt → jobguide.json (전직 공략, ※로컬 전용)
   tables.json       이름 테이블(아이템/캐릭터/직업 등)
   abil_max.json     어빌리티별 최대 레벨
   item_info.json    아이템 이름(한/영)·설명
   jobs.json         직업 사전(나라/세력/전직조건/습득어빌, 나무위키 출처)
+  jobguide.json     전직 공략 데이터 (커뮤니티 출처 — ※git 제외/로컬 전용, 콘텐츠 없으면 버튼 자동 숨김)
   G3Data/           게임에서 추출한 이름 테이블 원본(CP949)
 samples/      (git 제외) 테스트용 세이브, 원본 SaveEdit.exe, 나무위키 저장본
 ```
@@ -72,7 +74,10 @@ python tools/gen_itemdat.py         # <게임>/dats/Item.dat -> tools/item_info.
 ```sh
 python tools/job_extract.py         # 저장 HTML -> samples/job/extracted.txt
 python tools/gen_jobs.py            # extracted.txt -> tools/jobs.json (tables.json 로 ID 매핑)
+python tools/gen_jobguide.py        # (로컬 전용) 주요캐릭터 전직공략.txt -> tools/jobguide.json
 ```
+
+> ℹ️ 전직 공략(`jobguide.json`)은 커뮤니티 공략글 원문이라 **저장소에서 제외(git ignore)** 되어 있습니다. 파일이 없으면 빌드는 정상 진행되고 "전직 공략" 버튼은 자동으로 숨겨집니다.
 
 ## 포맷 명세
 

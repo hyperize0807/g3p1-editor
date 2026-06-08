@@ -58,9 +58,25 @@
   .hex{font-family:Consolas,monospace;font-size:11px;color:var(--mut);white-space:pre;overflow:auto;background:#181a1f;padding:8px;border-radius:6px}
   .hint{color:var(--mut);font-size:12px}
   .applyall{display:flex;gap:6px;align-items:center;color:var(--mut);font-size:12px}
-  #modal,#dictmodal,#jobmodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;align-items:flex-start;justify-content:center}
-  #modal .box,#dictmodal .box,#jobmodal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:40px;width:760px;max-width:94vw;max-height:86vh;overflow:auto;padding:18px 22px}
-  #modal h2,#dictmodal h2,#jobmodal h2{margin:0 0 4px;font-size:16px}
+  #modal,#dictmodal,#jobmodal,#guidemodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;align-items:flex-start;justify-content:center}
+  #modal .box,#dictmodal .box,#jobmodal .box,#guidemodal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:40px;width:760px;max-width:94vw;max-height:86vh;overflow:auto;padding:18px 22px}
+  #modal h2,#dictmodal h2,#jobmodal h2,#guidemodal h2{margin:0 0 4px;font-size:16px}
+  /* 전직 공략 */
+  #guideeps{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 10px;position:sticky;top:0;background:var(--panel);padding:4px 0;z-index:2}
+  .gep{margin-bottom:18px}
+  .gephead{color:var(--acc);font-size:15px;font-weight:700;border-bottom:2px solid var(--line);padding-bottom:4px;margin:8px 0}
+  .gchar{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--panel2)}
+  .gname{font-weight:700;color:var(--ok);padding:8px 10px;border-bottom:1px solid var(--line)}
+  .gbody{white-space:pre-wrap;font-size:12px;line-height:1.7;color:#d6dae3;padding:8px 10px}
+  .guidesrc{margin-top:14px;padding-top:8px;border-top:1px solid var(--line);color:var(--mut);font-size:11px;word-break:break-all}
+  /* 캐릭터 화면 전직 공략 카드 */
+  .cguide{border:1px solid #3a4a6b;background:#1b2233;border-radius:8px;margin-bottom:20px}
+  .cguide>summary{cursor:pointer;color:var(--acc);font-weight:600;padding:9px 12px;list-style:none}
+  .cguide>summary::-webkit-details-marker{display:none}
+  .cguide>summary:before{content:'📘 ▸ '}
+  .cguide[open]>summary:before{content:'📘 ▾ '}
+  .cguide .gbody{border-top:1px solid var(--line)}
+  .cguide .csrc{color:var(--mut);font-size:10px;padding:0 12px 8px;word-break:break-all}
   #dictsearch,#jobsearch{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--fg);margin-bottom:6px;position:sticky;top:0}
   /* 직업 사전 */
   #jobcountries{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
@@ -131,6 +147,7 @@
   <button id="invbtn" disabled>🎒 보관함 편집</button>
   <button id="dictbtn">📖 아이템 사전</button>
   <button id="jobbtn">📜 직업 사전</button>
+  <button id="guidebtn">📘 전직 공략</button>
   <label id="saververap" class="hint" style="display:none">저장 버전 <select id="savever" style="width:auto;padding:3px 6px"><option value="1.03+">1.03+</option><option value="1.04">1.04</option></select></label>
   <button id="save" class="primary" disabled>💾 저장(다운로드)</button>
   <span id="fname" class="hint"></span>
@@ -164,7 +181,7 @@
 </div></div>
 <div id="jobmodal"><div class="box">
   <h2>📜 직업 사전</h2>
-  <p class="hint">나라·세력별 직업 트리입니다. 각 직업의 <b>전직 조건</b>(필요 어빌리티·레벨)과 <b>습득 가능 어빌리티</b>(최대 레벨)를 보여줍니다. 검색은 직업명·세력·어빌리티명으로 됩니다. 일부 세력은 <b>최단 전직 루트 가이드</b>를 제공합니다.</p>
+  <p class="hint">나라·세력별 직업 트리입니다. 각 직업의 <b>전직 조건</b>(필요 어빌리티·레벨)과 <b>습득 가능 어빌리티</b>(최대 레벨)를 보여줍니다. 검색은 직업명·세력·어빌리티명으로 됩니다.</p>
   <input id="jobsearch" placeholder="검색…" autocomplete="off">
   <div id="jobcountries">
     <button data-c="" class="catbtn on">전체</button>
@@ -175,6 +192,14 @@
   </div>
   <div id="joblist"></div>
   <div style="text-align:right;margin-top:12px"><button id="jobclose" class="primary">닫기</button></div>
+</div></div>
+<div id="guidemodal"><div class="box">
+  <h2>📘 전직 공략</h2>
+  <p class="hint">주요 캐릭터별 전직 공략입니다. 상단 에피소드 버튼으로 해당 구간으로 바로 이동할 수 있고, 스크롤로 전체를 볼 수 있습니다.</p>
+  <div id="guideeps"></div>
+  <div id="guidebody"></div>
+  <div class="guidesrc" id="guidesrc"></div>
+  <div style="text-align:right;margin-top:12px"><button id="guideclose" class="primary">닫기</button></div>
 </div></div>
 <main>
   <div id="list"><input id="search" placeholder="이름/번호 검색…"><div id="rows"></div></div>
@@ -7797,11 +7822,9 @@ const JOBS = {
    "jobId": 83
   }
  ],
- "guides": {
-  "시반 슈미터": "주인공 살라딘 의 전직경로는 슈미터 (Str1, Dex1) → (아무 때나) 무슬림 (앙그라법전3) → xx레인저 (Dex5 , 잠긴상자열기 ) → 투사 (쌍검술4, Str2, 혼1) → 어절트 슈미터 (쌍검술5, Str5, 연3) → 티아마타 (쌍검술7, Str7, Dex7) → 시반 블레이드 이다. 또는 레인저 상태에서 오래 머무르기가 싫다면 순서를 바꿔서 슈미터 (Str1) → (아무 때나) 무슬림 (앙그라법전3) → 투사 (쌍검술4, Str2, 혼1) → 어절트 슈미터 (쌍검술5, Str5, Dex4, 연3) → xx레인저 (Dex5, 잠긴상자열기)→ 티아마타 (쌍검술7, Str7, Dex7) → 시반 블레이드 순으로 진행하면 Dex4가 찍힌 상태로 레인저가 되기 때문에 레벨2만 올리고 넘어갈 수 있다. 빨간 글씨는 앙그라법전이 없는 일반 슈미터가 시반 블레이드로 전직하기 위한 최단 루트이다.",
-  "왕국 기사단": "주인공 버몬트 의 전직경로는 크게 둘로 나뉜다. 나이트에서 필수적으로 찍어야 하는 Skill3과 힐1을 언제 찍는지가 기준이 된다. 세 번째 챕터인 과학마법연구소 시작 시 구입가능한 마인검의 존재 때문인데, 마인검을 장착하면 나이트 상태에서 답답하게 연1로 전투하지 않고 마법으로 시원시원하게 적을 쓸어버릴 수 있다. 마인검 구입 이후에 나이트를 간다면 디펜더 (Str1) → 돌격기사 (왕국검법3, Str3, 연2 ) → 전투기사 (왕국검법4, Str4) → 나이트 (Skill3, 힐1) → K.G (왕국검법5, Hp4, 마장기탑승, 초필살기제어) → 로얄 나이트 (왕국검법6) → 성기사단 (왕국검법7) → 대공 순으로 전직하면 된다. 만약 마인검을 기다리지 않고 물리전투로 나이트 구간을 최대한 빨리 통과하고자 한다면 디펜더 (바로 전직 또는 Str1, 연2, 힐1) → 나이트 (Str1, Skill3, 힐1) → 돌격기사 (왕국검법3, Str3, 연2 ) → 전투기사 → K.G → 로얄 나이트 → 성기사단 → 대공 순으로 가는 것이 좋다. 마인검의 혜택을 포기하는 대신 누적경험치가 적을 때는 적을 잡을 때 얻는 경험치가 많으므로 적은 수의 적을 잡고도 빠르게 렙업해서 통과한다는 전략이다. 다만 이 경우 연1만 가지고 레벨 5를 올리며 첫 챕터를 클리어해야 하므로 난이도가 대폭 올라간다. 그냥 마인검 얻고 나서 Skill 찍는 게 정신건강에 이롭다 빨간 글씨는 나이트에서 성기사단으로 전직하기 위한 최단루트이다."
- }
+ "guides": {}
 };          // 직업 사전: {countries:[], jobs:[{name,country,faction,jobId,require:[{name,lv,abilId}],learn:[{name,max,routeMin,abilId}]}], guides:{}}
+const JOBGUIDE = {"source":"","episodes":[]};  // 전직 공략: {source, episodes:[{title,epIndex,intro,chars:[{num,name,body}]}]} (커뮤니티 출처, source 라인 항상 표기)
 const itemDesc = id => { const v=ITEM_INFO[id]; return v && v.desc ? v.desc : ''; };
 const itemCat  = id => { const v=ITEM_INFO[id]; return v && v.cat ? v.cat : '기타'; };
 const itemTS   = id => { const v=ITEM_INFO[id]; return v ? (v.ts||0) : 0; };
@@ -7984,7 +8007,10 @@ function renderEdit(){
   let addopt='<option value="">+ 어빌리티 추가…</option>';
   if(TABLES.Abil) Object.keys(TABLES.Abil).map(Number).filter(id=>id>=1&&id<alen&&buf[abase+id]===ABIL_NONE).sort((a,b)=>a-b)
     .forEach(id=>{ addopt+='<option value="'+id+'">'+id+' — '+TABLES.Abil[id]+' (최대 '+abilMax(id)+')</option>'; });
-  e.innerHTML=
+  const _gg=findGuide(recName(off));
+  const guideCard=_gg?('<details class="cguide"><summary>전직 공략 — '+escA(_gg.c.name)+' ('+escA(_gg.ep.title)+')</summary>'+
+    '<div class="gbody">'+escA(_gg.c.body||'')+'</div><div class="csrc">'+escA(JOBGUIDE.source||'')+'</div></details>'):'';
+  e.innerHTML= guideCard+
   '<div class="grp"><h3>식별 정보 <span class="tag ok">확정</span></h3>'+
     '<div class="fld"><label>이름(읽기전용)</label><input type="text" value="'+recName(off)+'" readonly></div>'+
     selField("캐릭터 ID",off+F.charId,"Char",2)+
@@ -8278,14 +8304,41 @@ function renderJobDict(filter=""){
       }
       if(fHtml){
         cHtml+='<div class="jfaction">'+escA(fac||'')+'</div>';
-        const guide=JOBS.guides&&JOBS.guides[fac];
-        if(guide && !f) cHtml+='<details class="jguide"><summary>최단 전직 루트 가이드</summary><p>'+escA(guide)+'</p></details>';
         cHtml+=fHtml;
       }
     }
     if(cHtml) html+='<div class="jcountry">'+escA(country)+'</div>'+cHtml;
   }
   wrap.innerHTML = html || '<p class="hint">검색 결과가 없습니다.</p>';
+}
+// ===== 전직 공략 (커뮤니티 출처, source 라인 항상 표기) =====
+function guideCharHtml(c){
+  return '<div class="gchar" id="gchar'+c._gid+'"><div class="gname">'+escA(c.num+'. '+c.name)+'</div><div class="gbody">'+escA(c.body||'')+'</div></div>';
+}
+function renderGuide(){
+  // 에피소드 점프 버튼
+  const eps=document.getElementById('guideeps');
+  eps.innerHTML=JOBGUIDE.episodes.map(ep=>'<button class="catbtn" data-gep="'+ep.epIndex+'">'+escA(ep.title)+'</button>').join('');
+  let html='', gid=0;
+  for(const ep of JOBGUIDE.episodes){
+    html+='<div class="gep" id="gep'+ep.epIndex+'"><div class="gephead">'+escA(ep.title)+'</div>';
+    if(ep.intro) html+='<div class="gbody">'+escA(ep.intro)+'</div>';
+    for(const c of ep.chars){ c._gid=gid++; html+=guideCharHtml(c); }
+    html+='</div>';
+  }
+  document.getElementById('guidebody').innerHTML=html;
+  document.getElementById('guidesrc').textContent=JOBGUIDE.source||'';
+  eps.querySelectorAll('[data-gep]').forEach(b=>b.onclick=()=>{ const t=document.getElementById('gep'+b.dataset.gep); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); });
+}
+// 캐릭터 이름 → 전직 공략(있으면). 정확일치 우선, 그 다음 한쪽이 다른쪽을 접두 포함(길이≥2).
+function findGuide(name){
+  if(!name) return null;
+  const eps=JOBGUIDE.episodes;
+  for(const ep of eps) for(const c of ep.chars) if(c.name===name) return {ep,c};
+  for(const ep of eps) for(const c of ep.chars){
+    if(name.length>=2 && c.name.length>=2 && (c.name.startsWith(name)||name.startsWith(c.name))) return {ep,c};
+  }
+  return null;
 }
 function loadBuf(arr){
   const raw=new Uint8Array(arr);
@@ -8360,6 +8413,10 @@ document.querySelectorAll('#jobcountries .catbtn').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#jobcountries .catbtn').forEach(x=>x.classList.toggle('on',x===b));
   renderJobDict(document.getElementById('jobsearch').value.toLowerCase());
 });
+document.getElementById('guidebtn').onclick=()=>{renderGuide();document.getElementById('guidemodal').style.display='flex';};
+document.getElementById('guideclose').onclick=()=>document.getElementById('guidemodal').style.display='none';
+document.getElementById('guidemodal').onclick=e=>{if(e.target.id==='guidemodal')document.getElementById('guidemodal').style.display='none';};
+if(!(JOBGUIDE.episodes&&JOBGUIDE.episodes.length)) document.getElementById('guidebtn').style.display='none';   // 콘텐츠 없으면 버튼 숨김
 document.getElementById('search').oninput=e=>renderList(e.target.value.toLowerCase());
 // 커스텀 아이템 드롭다운: 열기/선택/검색/바깥클릭·스크롤 닫기 (이벤트 위임)
 document.addEventListener('click',e=>{

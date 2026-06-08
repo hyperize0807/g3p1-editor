@@ -92,8 +92,7 @@ for raw in lines:
         continue
     # 그 외(그룹라벨/더미/잡문) 무시
 
-data = {'countries': COUNTRIES_KEEP, 'jobs': jobs,
-        'guides': {k: ' '.join(v) for k, v in guides.items()}}
+data = {'countries': COUNTRIES_KEEP, 'jobs': jobs, 'guides': {}}   # 최단루트 가이드는 '전직 공략'(jobguide.json)으로 대체 → 직업 사전에서는 제거
 
 # --- tables.json 와 매핑 ---
 tables = json.load(open(os.path.join(PROJ, 'tables.json'), encoding='utf-8'))

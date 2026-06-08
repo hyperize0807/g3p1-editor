@@ -21,6 +21,9 @@ Thumbs.db
 __pycache__/
 *.pyc
 
+# 전직 공략(커뮤니티 출처) — 원작자 공개배포 허락 전까지 커밋 보류
+tools/jobguide.json
+
 # 임시
 _check.js
 *.tmp

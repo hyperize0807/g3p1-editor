@@ -9,6 +9,10 @@ tables = open(os.path.join(PROJ, 'tables.json'), encoding='utf-8').read()
 abil_max = open(os.path.join(PROJ, 'abil_max.json'), encoding='utf-8').read()
 item_info = open(os.path.join(PROJ, 'item_info.json'), encoding='utf-8').read()
 jobs = open(os.path.join(PROJ, 'jobs.json'), encoding='utf-8').read()
+# 전직 공략은 커뮤니티 출처 → 공개배포 허락 전까지 tools/jobguide.json 은 git 제외(없을 수 있음).
+# 파일이 없으면 빈 데이터로 빌드되고 '전직 공략' 버튼은 자동 숨김.
+_jg = os.path.join(PROJ, 'jobguide.json')
+jobguide = open(_jg, encoding='utf-8').read() if os.path.exists(_jg) else '{"source":"","episodes":[]}'
 
 HTML = r'''<!DOCTYPE html>
 <html lang="ko">
@@ -70,9 +74,25 @@ HTML = r'''<!DOCTYPE html>
   .hex{font-family:Consolas,monospace;font-size:11px;color:var(--mut);white-space:pre;overflow:auto;background:#181a1f;padding:8px;border-radius:6px}
   .hint{color:var(--mut);font-size:12px}
   .applyall{display:flex;gap:6px;align-items:center;color:var(--mut);font-size:12px}
-  #modal,#dictmodal,#jobmodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;align-items:flex-start;justify-content:center}
-  #modal .box,#dictmodal .box,#jobmodal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:40px;width:760px;max-width:94vw;max-height:86vh;overflow:auto;padding:18px 22px}
-  #modal h2,#dictmodal h2,#jobmodal h2{margin:0 0 4px;font-size:16px}
+  #modal,#dictmodal,#jobmodal,#guidemodal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:50;align-items:flex-start;justify-content:center}
+  #modal .box,#dictmodal .box,#jobmodal .box,#guidemodal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-top:40px;width:760px;max-width:94vw;max-height:86vh;overflow:auto;padding:18px 22px}
+  #modal h2,#dictmodal h2,#jobmodal h2,#guidemodal h2{margin:0 0 4px;font-size:16px}
+  /* 전직 공략 */
+  #guideeps{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0 10px;position:sticky;top:0;background:var(--panel);padding:4px 0;z-index:2}
+  .gep{margin-bottom:18px}
+  .gephead{color:var(--acc);font-size:15px;font-weight:700;border-bottom:2px solid var(--line);padding-bottom:4px;margin:8px 0}
+  .gchar{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--panel2)}
+  .gname{font-weight:700;color:var(--ok);padding:8px 10px;border-bottom:1px solid var(--line)}
+  .gbody{white-space:pre-wrap;font-size:12px;line-height:1.7;color:#d6dae3;padding:8px 10px}
+  .guidesrc{margin-top:14px;padding-top:8px;border-top:1px solid var(--line);color:var(--mut);font-size:11px;word-break:break-all}
+  /* 캐릭터 화면 전직 공략 카드 */
+  .cguide{border:1px solid #3a4a6b;background:#1b2233;border-radius:8px;margin-bottom:20px}
+  .cguide>summary{cursor:pointer;color:var(--acc);font-weight:600;padding:9px 12px;list-style:none}
+  .cguide>summary::-webkit-details-marker{display:none}
+  .cguide>summary:before{content:'📘 ▸ '}
+  .cguide[open]>summary:before{content:'📘 ▾ '}
+  .cguide .gbody{border-top:1px solid var(--line)}
+  .cguide .csrc{color:var(--mut);font-size:10px;padding:0 12px 8px;word-break:break-all}
   #dictsearch,#jobsearch{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel2);color:var(--fg);margin-bottom:6px;position:sticky;top:0}
   /* 직업 사전 */
   #jobcountries{display:flex;gap:4px;flex-wrap:wrap;margin:6px 0}
@@ -143,6 +163,7 @@ HTML = r'''<!DOCTYPE html>
   <button id="invbtn" disabled>🎒 보관함 편집</button>
   <button id="dictbtn">📖 아이템 사전</button>
   <button id="jobbtn">📜 직업 사전</button>
+  <button id="guidebtn">📘 전직 공략</button>
   <label id="saververap" class="hint" style="display:none">저장 버전 <select id="savever" style="width:auto;padding:3px 6px"><option value="1.03+">1.03+</option><option value="1.04">1.04</option></select></label>
   <button id="save" class="primary" disabled>💾 저장(다운로드)</button>
   <span id="fname" class="hint"></span>
@@ -176,7 +197,7 @@ HTML = r'''<!DOCTYPE html>
 </div></div>
 <div id="jobmodal"><div class="box">
   <h2>📜 직업 사전</h2>
-  <p class="hint">나라·세력별 직업 트리입니다. 각 직업의 <b>전직 조건</b>(필요 어빌리티·레벨)과 <b>습득 가능 어빌리티</b>(최대 레벨)를 보여줍니다. 검색은 직업명·세력·어빌리티명으로 됩니다. 일부 세력은 <b>최단 전직 루트 가이드</b>를 제공합니다.</p>
+  <p class="hint">나라·세력별 직업 트리입니다. 각 직업의 <b>전직 조건</b>(필요 어빌리티·레벨)과 <b>습득 가능 어빌리티</b>(최대 레벨)를 보여줍니다. 검색은 직업명·세력·어빌리티명으로 됩니다.</p>
   <input id="jobsearch" placeholder="검색…" autocomplete="off">
   <div id="jobcountries">
     <button data-c="" class="catbtn on">전체</button>
@@ -187,6 +208,14 @@ HTML = r'''<!DOCTYPE html>
   </div>
   <div id="joblist"></div>
   <div style="text-align:right;margin-top:12px"><button id="jobclose" class="primary">닫기</button></div>
+</div></div>
+<div id="guidemodal"><div class="box">
+  <h2>📘 전직 공략</h2>
+  <p class="hint">주요 캐릭터별 전직 공략입니다. 상단 에피소드 버튼으로 해당 구간으로 바로 이동할 수 있고, 스크롤로 전체를 볼 수 있습니다.</p>
+  <div id="guideeps"></div>
+  <div id="guidebody"></div>
+  <div class="guidesrc" id="guidesrc"></div>
+  <div style="text-align:right;margin-top:12px"><button id="guideclose" class="primary">닫기</button></div>
 </div></div>
 <main>
   <div id="list"><input id="search" placeholder="이름/번호 검색…"><div id="rows"></div></div>
@@ -199,6 +228,7 @@ const ABIL_MAX = __ABILMAX__;   // 어빌리티별 최대 레벨 (Abi.dat record
 const abilMax = id => (ABIL_MAX[id] || 9);
 const ITEM_INFO = __ITEMINFO__; // 아이템 사전: id -> {eng, cat, desc?, ts?, ss?} (Item.dat). 이름은 TABLES.Item 사용.
 const JOBS = __JOBS__;          // 직업 사전: {countries:[], jobs:[{name,country,faction,jobId,require:[{name,lv,abilId}],learn:[{name,max,routeMin,abilId}]}], guides:{}}
+const JOBGUIDE = __JOBGUIDE__;  // 전직 공략: {source, episodes:[{title,epIndex,intro,chars:[{num,name,body}]}]} (커뮤니티 출처, source 라인 항상 표기)
 const itemDesc = id => { const v=ITEM_INFO[id]; return v && v.desc ? v.desc : ''; };
 const itemCat  = id => { const v=ITEM_INFO[id]; return v && v.cat ? v.cat : '기타'; };
 const itemTS   = id => { const v=ITEM_INFO[id]; return v ? (v.ts||0) : 0; };
@@ -381,7 +411,10 @@ function renderEdit(){
   let addopt='<option value="">+ 어빌리티 추가…</option>';
   if(TABLES.Abil) Object.keys(TABLES.Abil).map(Number).filter(id=>id>=1&&id<alen&&buf[abase+id]===ABIL_NONE).sort((a,b)=>a-b)
     .forEach(id=>{ addopt+='<option value="'+id+'">'+id+' — '+TABLES.Abil[id]+' (최대 '+abilMax(id)+')</option>'; });
-  e.innerHTML=
+  const _gg=findGuide(recName(off));
+  const guideCard=_gg?('<details class="cguide"><summary>전직 공략 — '+escA(_gg.c.name)+' ('+escA(_gg.ep.title)+')</summary>'+
+    '<div class="gbody">'+escA(_gg.c.body||'')+'</div><div class="csrc">'+escA(JOBGUIDE.source||'')+'</div></details>'):'';
+  e.innerHTML= guideCard+
   '<div class="grp"><h3>식별 정보 <span class="tag ok">확정</span></h3>'+
     '<div class="fld"><label>이름(읽기전용)</label><input type="text" value="'+recName(off)+'" readonly></div>'+
     selField("캐릭터 ID",off+F.charId,"Char",2)+
@@ -675,14 +708,41 @@ function renderJobDict(filter=""){
       }
       if(fHtml){
         cHtml+='<div class="jfaction">'+escA(fac||'')+'</div>';
-        const guide=JOBS.guides&&JOBS.guides[fac];
-        if(guide && !f) cHtml+='<details class="jguide"><summary>최단 전직 루트 가이드</summary><p>'+escA(guide)+'</p></details>';
         cHtml+=fHtml;
       }
     }
     if(cHtml) html+='<div class="jcountry">'+escA(country)+'</div>'+cHtml;
   }
   wrap.innerHTML = html || '<p class="hint">검색 결과가 없습니다.</p>';
+}
+// ===== 전직 공략 (커뮤니티 출처, source 라인 항상 표기) =====
+function guideCharHtml(c){
+  return '<div class="gchar" id="gchar'+c._gid+'"><div class="gname">'+escA(c.num+'. '+c.name)+'</div><div class="gbody">'+escA(c.body||'')+'</div></div>';
+}
+function renderGuide(){
+  // 에피소드 점프 버튼
+  const eps=document.getElementById('guideeps');
+  eps.innerHTML=JOBGUIDE.episodes.map(ep=>'<button class="catbtn" data-gep="'+ep.epIndex+'">'+escA(ep.title)+'</button>').join('');
+  let html='', gid=0;
+  for(const ep of JOBGUIDE.episodes){
+    html+='<div class="gep" id="gep'+ep.epIndex+'"><div class="gephead">'+escA(ep.title)+'</div>';
+    if(ep.intro) html+='<div class="gbody">'+escA(ep.intro)+'</div>';
+    for(const c of ep.chars){ c._gid=gid++; html+=guideCharHtml(c); }
+    html+='</div>';
+  }
+  document.getElementById('guidebody').innerHTML=html;
+  document.getElementById('guidesrc').textContent=JOBGUIDE.source||'';
+  eps.querySelectorAll('[data-gep]').forEach(b=>b.onclick=()=>{ const t=document.getElementById('gep'+b.dataset.gep); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); });
+}
+// 캐릭터 이름 → 전직 공략(있으면). 정확일치 우선, 그 다음 한쪽이 다른쪽을 접두 포함(길이≥2).
+function findGuide(name){
+  if(!name) return null;
+  const eps=JOBGUIDE.episodes;
+  for(const ep of eps) for(const c of ep.chars) if(c.name===name) return {ep,c};
+  for(const ep of eps) for(const c of ep.chars){
+    if(name.length>=2 && c.name.length>=2 && (c.name.startsWith(name)||name.startsWith(c.name))) return {ep,c};
+  }
+  return null;
 }
 function loadBuf(arr){
   const raw=new Uint8Array(arr);
@@ -757,6 +817,10 @@ document.querySelectorAll('#jobcountries .catbtn').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('#jobcountries .catbtn').forEach(x=>x.classList.toggle('on',x===b));
   renderJobDict(document.getElementById('jobsearch').value.toLowerCase());
 });
+document.getElementById('guidebtn').onclick=()=>{renderGuide();document.getElementById('guidemodal').style.display='flex';};
+document.getElementById('guideclose').onclick=()=>document.getElementById('guidemodal').style.display='none';
+document.getElementById('guidemodal').onclick=e=>{if(e.target.id==='guidemodal')document.getElementById('guidemodal').style.display='none';};
+if(!(JOBGUIDE.episodes&&JOBGUIDE.episodes.length)) document.getElementById('guidebtn').style.display='none';   // 콘텐츠 없으면 버튼 숨김
 document.getElementById('search').oninput=e=>renderList(e.target.value.toLowerCase());
 // 커스텀 아이템 드롭다운: 열기/선택/검색/바깥클릭·스크롤 닫기 (이벤트 위임)
 document.addEventListener('click',e=>{
@@ -791,7 +855,7 @@ drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f){fileName=
 </body>
 </html>'''
 
-HTML = HTML.replace("__TABLES__", tables).replace("__ABILMAX__", abil_max).replace("__ITEMINFO__", item_info).replace("__JOBS__", jobs).replace("__VERSION__", VERSION)
+HTML = HTML.replace("__TABLES__", tables).replace("__ABILMAX__", abil_max).replace("__ITEMINFO__", item_info).replace("__JOBS__", jobs).replace("__JOBGUIDE__", jobguide).replace("__VERSION__", VERSION)
 out = os.path.join(DIST, 'index.html')
 open(out, 'w', encoding='utf-8').write(HTML)
 print("written:", out, len(HTML), "bytes")
